@@ -1,0 +1,60 @@
+{
+    "global": {
+        "ext": "hlsl",
+        "append_to_shader_ext": true,
+        "include_dirs": [""],
+        "hlsl_version": "6_0"
+    },
+    "shaders": {
+        "raster": {
+            "pixel": {
+                "ext": "ps",
+                "include_dirs": [""]
+            }
+        },
+        "geometry": {
+            "vertex": {
+                "ext": "vs"
+            },
+            "hull": {
+                "ext": "hs"
+            },
+            "domain": {
+                "ext": "ds"
+            },
+            "mesh": {
+                "ext": "ms"
+            },
+            "amplification": {
+                "ext": "amp"
+            },
+            "geometry": {
+                "ext": "gs"
+            }
+        },
+        "compute": {
+            "ext": "cs"
+        },
+        "raytrace": {
+            "anyhit": {
+                "ext": "anyhit"
+            },
+            "miss": {
+                "ext": "miss"
+            },
+            "raygen": {
+                "ext": "raygen"
+            },
+            "closesthit": {
+                "ext": "closesthit"
+            },
+            "intersection": {
+                "ext": "intersection"
+            },
+            "__comment__": "This is Intel's shader proposal, to allow for efficient acceleration structure traversal.",
+            "traversal": {
+                "ext": "traversal"
+            }
+        }
+    }
+}
