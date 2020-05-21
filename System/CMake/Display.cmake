@@ -1,0 +1,6 @@
+set ( DISPLAY_INCLUDE_DIR ${SYSTEM_INCLUDE_DIR}/Display )
+
+set ( SYSTEM_FILES
+    ${SYSTEM_FILES}
+    ${DISPLAY_INCLUDE_DIR}/Window.hpp
+ )
