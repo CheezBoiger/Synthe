@@ -21,9 +21,13 @@ enum GResult
     GResult_INITIALIZATION_FAILURE,
     GResult_MEMORY_CORRUPTION,
     GResult_LOST_DEVICE,
-    GResult_CREATION_FAILTURE,
+    GResult_CREATION_FAILURE,
     GResult_INVALID_CALL,
     GResult_INVALID_ARGS,
+    GResult_MEMORY_INITIALIZATION_FAILURE,
+    GResult_MEMORY_ALLOCATION_FAILURE,
+    GResult_REFUSE_CALL,
+    GResult_MEMORY_NULL_EXCEPTION,
     GResult_UNKNOWN
 };
 
@@ -55,6 +59,11 @@ struct SwapchainConfig
     U64 NativeWinHandle;
     U32 Windowed;
     SwapchainFlags Flags;
+    // Buffering is independent of Swapchain Image Count. This means that 
+    // Resources are syncronized based on this value, not the Image Count granted
+    // to the application. In other words, this value determines how many frames 
+    // can be in-flight, before synronization is required.
+    U32 Buffering;
 };
 
 

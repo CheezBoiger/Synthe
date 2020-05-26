@@ -3,7 +3,7 @@
 // Author: Mario Garcia
 
 #include "D3D12GraphicsDevice.hpp"
-
+#include "D3D12GPUManager.hpp"
 
 #define INTEL_VENDOR_ID 0x8086
 #define NVIDIA_VENDOR_ID 0x10DE 
@@ -21,6 +21,12 @@ GraphicsDevice* CreateDeviceD3D12()
 {
     static D3D12GraphicsDevice Device;
     return &Device;
+}
+
+void InitializeHeaps(ID3D12Device* PDevice)
+{
+
+    
 }
 
 struct DeviceFeatureSupport
@@ -182,7 +188,9 @@ GResult D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceConfig
 
     // Initialize our swapchain.
     m_Swapchain.Initialize(SwapchainConfig, m_Device, PFactory);
-    
+
+    InitializeHeaps(m_Device);    
+
     m_PFactory = PFactory;
     return GResult_OK;
 }

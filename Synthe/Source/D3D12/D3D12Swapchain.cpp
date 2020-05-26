@@ -3,7 +3,7 @@
 // Author: Mario Garcia
 
 #include "D3D12Swapchain.hpp"
-
+#include "D3D12GPUManager.hpp"
 
 namespace Synthe {
 
@@ -34,7 +34,7 @@ GResult D3D12Swapchain::CreateBackbufferQueue(ID3D12Device* PDevice)
     Desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     HRESULT HR = PDevice->CreateCommandQueue(&Desc, __uuidof(ID3D12CommandQueue), (void**)&m_BackbufferQueue);
     if (FAILED(HR)) 
-        return GResult_CREATION_FAILTURE;
+        return GResult_CREATION_FAILURE;
     return GResult_OK;
 }
 
@@ -64,6 +64,9 @@ void D3D12Swapchain::Initialize(const SwapchainConfig& SwapchainConfig,
 
     Swapchain->QueryInterface<IDXGISwapChain3>(&m_NativeHandle);
     m_Config = SwapchainConfig;
+
+    QueryFrames(PDevice, SwapchainConfig.Count);
+    QueryBufferingResources(PDevice, SwapchainConfig.Buffering);
 }
 
 
@@ -80,6 +83,10 @@ void D3D12Swapchain::Resize(const SwapchainConfig& Config)
     }
 
     m_Config = Config;
+
+    ID3D12Device* PDevice = nullptr;
+    m_NativeHandle->GetDevice(__uuidof(ID3D12Device), (void**)&PDevice);
+    QueryFrames(PDevice, m_Config.Count);
 }
 
 
@@ -87,6 +94,8 @@ void D3D12Swapchain::CleanUp()
 {
     if (!m_NativeHandle)
         return;
+    CleanUpFrameResources();
+    CleanUpBufferingResources();
     m_NativeHandle->Release();
     m_BackbufferQueue->Release();
     m_NativeHandle = nullptr;
@@ -97,6 +106,93 @@ void D3D12Swapchain::CleanUp()
 U32 D3D12Swapchain::GetNextFrameIndex()
 {
     U32 FrameIndex = static_cast<U32>(m_NativeHandle->GetCurrentBackBufferIndex());
+    BufferIndex = FrameIndex % (U32)m_BufferingResources.size();
     return FrameIndex;   
+}
+
+
+void D3D12Swapchain::SubmitCommandListsToBackBuffer(ID3D12CommandList* const* PPCommandLists, U32 Count, U32 FrameIndex)
+{
+    FrameResource& Frame = m_FrameResources[FrameIndex];
+    BufferingResource& Buffer = m_BufferingResources[FrameIndex % m_BufferingResources.size()];
+    m_BackbufferQueue->Wait(Buffer.PWaitFence, Buffer.FenceSignalValue);
+    m_BackbufferQueue->ExecuteCommandLists(Count, PPCommandLists);
+    U32 FenceNewValue = Buffer.FenceSignalValue++;
+    m_BackbufferQueue->Signal(Buffer.PSignalFence, FenceNewValue);
+}
+
+
+void D3D12Swapchain::QueryFrames(ID3D12Device* PDevice, U32 ImageCount)
+{
+    CleanUpFrameResources();
+    m_FrameResources.resize(ImageCount);
+
+    for (U32 I = 0; I < ImageCount; ++I)
+    {
+        FrameResource& Frame = m_FrameResources[I];
+        HRESULT Result = m_NativeHandle->GetBuffer(I, 
+                                                   __uuidof(ID3D12Resource), 
+                                                   (void**)&Frame.PSwapchainImage);
+        if (FAILED(Result)) 
+        {
+            // Failed.    
+        }
+    }
+}
+
+
+void D3D12Swapchain::CleanUpFrameResources()
+{
+    for (U32 I = 0; I < m_FrameResources.size(); ++I)
+    {
+        m_FrameResources[I].PRtvHandle;
+        m_FrameResources[I].PSwapchainImage = nullptr;
+    }
+}
+
+
+void D3D12Swapchain::CleanUpBufferingResources()
+{
+    for (U32 I = 0; I < m_BufferingResources.size(); ++I) 
+    {
+        BufferingResource& Buffer = m_BufferingResources[I];
+        Buffer.PWaitFence->Release();
+        Buffer.PSignalFence->Release();
+        CloseHandle(Buffer.FenceEventSignal);
+        CloseHandle(Buffer.FenceEventWait);
+        Buffer.DescriptorPoolRtv.Release();
+        Buffer.DescriptorPoolDsv.Release();
+        Buffer.DescriptorPoolCbvSrvUav.Release();
+        Buffer.DescriptorPoolSampler.Release();
+        Buffer.DirectCommandList->Release();
+        Buffer.PCommandAllocator->Release();
+    }  
+}
+
+
+void D3D12Swapchain::QueryBufferingResources(ID3D12Device* PDevice, U32 BufferingCount)
+{
+    CleanUpBufferingResources();
+    m_BufferingResources.resize(BufferingCount);
+    for (U32 I = 0; I < m_BufferingResources.size(); ++I)
+    {
+        BufferingResource& Buffer = m_BufferingResources[I];
+        
+        Buffer.FenceEventSignal = CreateEvent(NULL, FALSE, FALSE, NULL);
+        Buffer.FenceEventWait = CreateEvent(NULL, FALSE, FALSE, NULL);
+    
+        HRESULT Result = 0; 
+        PDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PSignalFence);
+        PDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PWaitFence);
+        PDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&Buffer.PCommandAllocator);
+        
+        if (Buffer.PCommandAllocator)
+            PDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Buffer.PCommandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&Buffer.DirectCommandList);
+    
+        Buffer.DescriptorPoolRtv.Create(PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, (1<<7));
+        Buffer.DescriptorPoolDsv.Create(PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, (1<<9));
+        Buffer.DescriptorPoolCbvSrvUav.Create(PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, (1<<15));
+        Buffer.DescriptorPoolSampler.Create(PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 64);
+    }
 }
 } // Synthe 

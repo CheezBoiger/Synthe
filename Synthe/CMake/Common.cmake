@@ -15,7 +15,9 @@ set ( SYNTHE_MATH_FILES
 )
 
 set ( SYNTHE_MEMORY_FILES
-
+    ${SYNTHE_MEMORY_INC_DIR}/Allocator.hpp
+    ${SYNTHE_MEMORY_INC_DIR}/LinearAllocator.hpp
+    ${SYNTHE_MEMORY_INC_DIR}/NewAllocator.hpp
 )
 
 set ( SYNTHE_COMMON_FILES
