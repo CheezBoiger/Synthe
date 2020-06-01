@@ -28,6 +28,9 @@ enum GResult
     GResult_MEMORY_ALLOCATION_FAILURE,
     GResult_REFUSE_CALL,
     GResult_MEMORY_NULL_EXCEPTION,
+    GResult_NOT_IMPLEMENTED,
+    GResult_NOT_AVAILABLE,
+    GResult_OUT_OF_BOUNDS,
     GResult_UNKNOWN
 };
 
@@ -52,17 +55,24 @@ enum SwapchainFlags
 
 struct SwapchainConfig
 {
+    //! Width of the swapchain images.
     U32 Width;
+    //! Height of the swapchain images.
     U32 Height;
+    //! Number of swapchain images to create.
     U32 Count;
+    //! Format of the Swapchain images.
     U32 Format;
+    //! Native handle to a Windows application window.
     U64 NativeWinHandle;
+    //! Bool value if the WinHandle is in windowed mode.
     U32 Windowed;
+    //! Swapchain flags to be used for the application.
     SwapchainFlags Flags;
-    // Buffering is independent of Swapchain Image Count. This means that 
-    // Resources are syncronized based on this value, not the Image Count granted
-    // to the application. In other words, this value determines how many frames 
-    // can be in-flight, before synronization is required.
+    //! Buffering is independent of Swapchain Image Count. This means that 
+    //! Resources are syncronized based on this value, not the Image Count granted
+    //! to the application. In other words, this value determines how many frames 
+    //! can be in-flight, before synronization is required.
     U32 Buffering;
 };
 
@@ -91,13 +101,13 @@ enum GraphicsDeviceFlags
 
 struct GraphicsDeviceConfig
 {
-    // Desired GPU Vendor.
+    //! Desired GPU Vendor.
     GPUVendor DesiredVendor;
-    // Desired Flags.
+    //! Desired Flags.
     GraphicsDeviceFlags DesiredFlags;
-    // True if the specified desires are required.
+    //! True if the specified desires are required.
     B32 DesiresRequired : 1;
-    // Enable GPU validation for debugging.
+    //! Enable GPU validation for debugging.
     B32 EnableDeviceDebugLayer : 1;
 };
 
