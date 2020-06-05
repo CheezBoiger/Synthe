@@ -23,8 +23,6 @@ public:
     //! The allocation call function, used for creating the resource
     //! object, along with the raw memory handle.
     //! \param PDevice The device handle from the Application context.
-    //! \param Allocator The data structure used for handling the internal native
-    //!                  API object.
     //! \param Desc The description of the resource to create.
     //! \param InitialState The initial resource state that the resource will be created
     //!                     with. This is the starting state, and must be transitioned if 
@@ -134,42 +132,54 @@ public:
     //! \param PDevice
     //! \param Info
     //! \param PResource
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the shader resource view. Null descriptor handle is 
     //!         returned if the creation has failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateSrv(ID3D12Device* PDevice, 
                                           D3D12_SHADER_RESOURCE_VIEW_DESC& Info, 
-                                          ID3D12Resource* PResource);
+                                          ID3D12Resource* PResource,
+                                          D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
     
     //! Create a Depth Stencil View from this descriptor pool.
     //!
     //! \param PDevice
     //! \param Info
     //! \param PResource
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the depth stencil view. Null descriptor handle is 
     //!         returned if the creation has failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateDsv(ID3D12Device* PDevice,
                                           D3D12_DEPTH_STENCIL_VIEW_DESC& Info,
-                                          ID3D12Resource* PResource);
+                                          ID3D12Resource* PResource,
+                                          D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
 
     //! Create a Render Target View from this descriptor pool.
     //! 
     //! \param PDevice
     //! \param Info
     //! \param PResource
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the render target view. Null descriptor handle is returned
     //!         if the creation has failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateRtv(ID3D12Device* PDevice,
                                           D3D12_RENDER_TARGET_VIEW_DESC& Info,
-                                          ID3D12Resource* PResource);
+                                          ID3D12Resource* PResource, 
+                                          D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
 
     //! Create a Constant Buffer View from this descriptor pool.
     //!
     //! \param PDevice
     //! \param Info
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the constant buffer view. Null descriptor handle is returned
     //!         if the creation has failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateCbv(ID3D12Device* PDevice,
-                                          D3D12_CONSTANT_BUFFER_VIEW_DESC& Info);
+                                          D3D12_CONSTANT_BUFFER_VIEW_DESC& Info,
+                                          D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
 
     //! Create an Undordered Access View from this descriptor pool.
     //! 
@@ -177,20 +187,26 @@ public:
     //! \param Info
     //! \param PCounterResource
     //! \param PResource
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the unordered access view. Null descriptor handle is returned
     //!         if the creation has failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateUav(ID3D12Device* PDevice,
                                           D3D12_UNORDERED_ACCESS_VIEW_DESC& Info,
                                           ID3D12Resource* PCounterResource,
-                                          ID3D12Resource* PResource);
+                                          ID3D12Resource* PResource,
+                                          D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
 
     //! Create a Sampler from this descriptor pool.
     //!
     //! \param PDevice
     //! \param Info
+    //! \param LocationInDescriptorHeap Optional location to create the descriptor in this descriptor pool.
+    //!                                 If none is defined, it will immediately append to the last.
     //! \return The descriptor handle to the sampler. Null descriptor handle is returned if the creation is failed.
     D3D12_CPU_DESCRIPTOR_HANDLE CreateSampler(ID3D12Device* PDevice,
-                                              D3D12_SAMPLER_DESC& Info);
+                                              D3D12_SAMPLER_DESC& Info,
+                                              D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
     
     //! Get The descriptor heap type. 
     //! \return The type of this descriptor pool.
@@ -248,12 +264,23 @@ public:
     //! Obtain the base cpu address from this descriptor pool.
     //!
     //! \return The base CPU address of the descriptor pool.
-    D3D12_CPU_DESCRIPTOR_HANDLE GetBaseCpuAddress() const { return m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart(); }
+    D3D12_CPU_DESCRIPTOR_HANDLE GetBaseCPUAddress() const { return m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart(); }
     
     //! Get the base gpu address from this descriptor pool.
     //! 
     //! \return The base GPU address of the descriptor pool.
-    D3D12_GPU_DESCRIPTOR_HANDLE GetBaseGpuAddress() const { return m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetBaseGPUAddress() const { return m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart(); }
+
+    //! Reset the pool entirely. This sets our last available handles back to the beginning.
+    void ResetPool() { m_LastCpuHandle = GetBaseCPUAddress(); m_LastGpuHandle = GetBaseGPUAddress(); }
+
+    //! Get the GPU Handle address from the corresponding CPU handle address. Returns the base address
+    //! if no possible to find the given Input CPU handle.
+    //!
+    //! \param Handle The CPU handle.
+    //! \return The corresponding GPU handle. Returns the base address of the gpu descriptor if the given
+    //!         inpute CPU handle is not within this descriptor table.
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUAddressFromCPUAddress(D3D12_CPU_DESCRIPTOR_HANDLE Handle);
 
 private:
     //! Descriptor heap handle from native context.
@@ -267,7 +294,10 @@ private:
 
     //! Alingment size of the 
     UINT m_AlignmentSizeInBytes;
-
+    
+    //! Total size of the descriptor heap in bytes.
+    UINT m_TotalDescriptorHeapSizeInBytes;
+    
     //! Fast access to descriptor heap type.
     D3D12_DESCRIPTOR_HEAP_TYPE m_DescriptorHeapType;
 };
@@ -275,11 +305,20 @@ private:
 
 class D3D12GPUMemoryManager {
 public:
-    void InitializeSamplerPool(ID3D12Device* PDevice, U64 SizeInBytes);
-    void InitializeRtvDsvHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    void InitializeCbvSrvUavHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    void InitializeSceneMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    void InitializeScratchMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);    
+    static void InitializeSamplerPool(ID3D12Device* PDevice, U64 SizeInBytes);
+    static void InitializeRtvDsvHeap(ID3D12Device* PDevice, U64 SizeInBytes);
+    static void InitializeCbvSrvUavHeap(ID3D12Device* PDevice, U64 SizeInBytes);
+    static void InitializeSceneMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);
+    static void InitializeScratchMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);    
+
+    static void InitializeUploadCbvSrvUavDescriptorHeaps(U32 NumHeaps, U32 NumTotalDescriptors);
+    static void InitializeRtvDescriptorHeap(U32 NumTotalDescriptors);
+    static void InitializeDsvDescriptorHeap(U32 NumTotalDescriptors);
+    static void InitializeUploadDescriptorSamplerHeaps(U32 NumHeaps, U32 NumTotalDescriptors);
+
+    //! Upload heaps that are used for rendering. 
+    static void InitializeGPUCbvSrvUavDescriptorHeap(ID3D12Device* PDevice, U32 NumDescriptors);
+    static void InitializeGPUSamplerDescriptorHeap(ID3D12Device* PDevice, U32 NumDescriptors);
 
     static MemoryPool& GetSamplerHeap();
     static MemoryPool& GetRtvDsvHeap();
@@ -289,6 +328,15 @@ public:
     static MemoryPool& GetScratchMemoryHeap();
     static MemoryPool& GetUploadMemoryHeap();
     static MemoryPool& GetReadbackMemoryHeap();
+
+
+    static DescriptorPool& DescriptorPoolRtv();
+    static DescriptorPool& DescriptorPoolDsv();
+    static DescriptorPool& DescriptorPoolCbvSrvUav();
+    static DescriptorPool& DescriptorPoolSampler();
+
+    static DescriptorPool& UploadDescriptorPoolCbvSrvUav(U32 BufferIndex);
+    static DescriptorPool& UploadDescriptorPoolSamplers(U32 BufferIndex);
 
 };
 } // Synthe 

@@ -5,15 +5,6 @@
 #include "D3D12GraphicsDevice.hpp"
 #include "D3D12GPUManager.hpp"
 
-#define INTEL_VENDOR_ID 0x8086
-#define NVIDIA_VENDOR_ID 0x10DE 
-#define NVIDIA_SGS_VENDOR_ID 0x12D2
-#define AMD_VENDOR_ID 0x1002
-#define AMD_ATI_VENDOR_ID 0x1022
-#define QUALCOMM_VENDOR_ID 0x5143
-#define MICROSOFT_VENDOR_ID 0x1414
-
-
 namespace Synthe {
 
 
@@ -25,8 +16,9 @@ GraphicsDevice* CreateDeviceD3D12()
 
 void InitializeHeaps(ID3D12Device* PDevice)
 {
-
-    
+    // TODO(): Implement these initializers!
+    D3D12GPUMemoryManager::InitializeRtvDsvHeap(PDevice, 32ULL * 1024ULL);
+    D3D12GPUMemoryManager::InitializeRtvDescriptorHeap(1024);
 }
 
 struct DeviceFeatureSupport
@@ -186,10 +178,9 @@ GResult D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceConfig
     m_Device = BestDevice;
     m_Adapter = BestAdapter;
 
+    InitializeHeaps(m_Device);    
     // Initialize our swapchain.
     m_Swapchain.Initialize(SwapchainConfig, m_Device, PFactory);
-
-    InitializeHeaps(m_Device);    
 
     m_PFactory = PFactory;
     return GResult_OK;

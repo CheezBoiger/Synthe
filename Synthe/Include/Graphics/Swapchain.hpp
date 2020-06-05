@@ -13,7 +13,7 @@ class Swapchain {
 public:
     virtual void Resize(const SwapchainConfig& Config) = 0;
 
-    const SwapchainConfig& GetConfig() const { return m_Config; } 
+    SwapchainConfig GetConfig() const { return m_Config; } 
 protected:
     SwapchainConfig m_Config;
 };
