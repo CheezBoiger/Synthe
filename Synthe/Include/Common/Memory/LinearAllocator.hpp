@@ -10,17 +10,33 @@
 namespace Synthe {
 
 
+//! Linear Allocator is a stack based allocator, which is mainly for allocating and
+//! placing the requested memory block on top of the last allocated block. This is 
+//! fast as it does not need to make many checks other than bounds. With an already 
+//! defined memory block initialized/malloc'ed, this process is very fast. A top pointer 
+//! determines the top of the stack.
 class LinearAllocator : public Allocator {
 public:
-    LinearAllocator() : Allocator() { }
+    LinearAllocator() 
+        : m_Top(MEM_BYTES(0))
+        , Allocator() { }
 
-    void Initialize(UPtr RawMemRegion, U64 TotalSizeInBytes) override { }
-    void Reset() override { m_Top = m_RawPtr; }
+    void OnInitialize() override;
     
-    B32 Allocate(AllocationBlock* Block, U64 SizeInBytes, U64 Alignment) override { return false; }
-    B32 Free(AllocationBlock* Ptr) override { return false; }
+    //! Reset the linear allocator.
+    void Reset() override { 
+        m_Top = m_BaseAddress; 
+        m_NumAllocations = 0ULL;  
+        m_CurrentUsedBytes = 0ULL;
+    }
+    
+    //!
+    ResultCode Allocate(AllocationBlock* Block, U64 SizeInBytes, U64 Alignment) override;
+    
+    //! 
+    ResultCode Free(AllocationBlock* Ptr) override { return SResult_NOT_AVAILABLE; }
 
 private:
-    UPtr m_Top;
+    UPtr    m_Top;
 };
 } // Synthe

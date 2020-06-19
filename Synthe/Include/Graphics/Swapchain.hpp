@@ -9,8 +9,13 @@
 
 namespace Synthe {
 
+
+//! Basic Swapchain implementation.
 class Swapchain {
 public:
+    Swapchain() : m_Config() { }
+    virtual ~Swapchain() { }
+
     virtual void Resize(const SwapchainConfig& Config) = 0;
 
     SwapchainConfig GetConfig() const { return m_Config; } 

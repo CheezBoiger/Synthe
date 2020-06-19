@@ -47,15 +47,7 @@
 //!
 //! \param Format The common format defined by the application.
 //! \return The native DXGI format that corresponds to the common GFormat.
-static DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::GFormat Format)
-{
-    switch (Format)
-    {
-        case Synthe::GFormat_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
-        case Synthe::GFormat_R16G16B16A16_FLOAT: return DXGI_FORMAT_R16G16B16A16_FLOAT;
-        default: return DXGI_FORMAT_UNKNOWN;
-    }
-}
+DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format);
 
 //! Get the bit width, or pixel depth, of the input format. This should be the 
 //! total size of a pixel that is to be provided by the buffer/image using this

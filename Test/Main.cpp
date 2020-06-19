@@ -14,7 +14,7 @@ int main(int c, char* argv[])
     InitializeSystem();
 
     Window* PWindow = CreateAppWindow();
-    PWindow->Initialize(u8"KITTY CAT  猫の愛 猫の愛 猫の愛 CAt", 0, 0, 1200, 800);
+    PWindow->Initialize(u8"KITTY CAT  猫の愛 猫の愛 猫の愛 Cat", 0, 0, 1200, 800);
     PWindow->Show();
 
     GraphicsDevice* PDevice = Synthe::CreateDeviceD3D12();
@@ -24,8 +24,10 @@ int main(int c, char* argv[])
 
     GraphicsDeviceConfiguration.DesiredVendor = GPUVendor_NVIDIA;
     GraphicsDeviceConfiguration.DesiredFlags = GraphicsDeviceFlags_CONSERVATIVE_RASTER_BIT;
+    GraphicsDeviceConfiguration.EnableDeviceDebugLayer = true;
 
-    SwapchainConfiguration.Count = 3;
+    SwapchainConfiguration.NumFrames = 3;
+    SwapchainConfiguration.Buffering = 3;
     SwapchainConfiguration.Format = GFormat_R8G8B8A8_UNORM;
     SwapchainConfiguration.Height = 800;
     SwapchainConfiguration.Width = 1200;

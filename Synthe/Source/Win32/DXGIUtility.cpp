@@ -71,3 +71,13 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
             return 0;
     }
 }
+
+DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format)
+{
+    switch (Format)
+    {
+        case Synthe::GFormat_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case Synthe::GFormat_R16G16B16A16_FLOAT: return DXGI_FORMAT_R16G16B16A16_FLOAT;
+        default: return DXGI_FORMAT_UNKNOWN;
+    }
+}

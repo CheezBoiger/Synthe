@@ -6,83 +6,9 @@
 #include "Win32Common.hpp"
 #include "Common/Memory/Allocator.hpp"
 
-#include <vector>
 #include <unordered_map>
 
 namespace Synthe {
-
-
-class Allocator;
-
-//! MemoryPool is the handler for internal API objects. This is in terms of the 
-//! D3D12 Heap handler. Resources are created via this object, should they need
-//! to be allocated within user managed pools.
-class MemoryPool
-{
-public:
-    //! The allocation call function, used for creating the resource
-    //! object, along with the raw memory handle.
-    //! \param PDevice The device handle from the Application context.
-    //! \param Desc The description of the resource to create.
-    //! \param InitialState The initial resource state that the resource will be created
-    //!                     with. This is the starting state, and must be transitioned if 
-    //!                     it's handling requires so.
-    //! \param ClearValue Optimized clear value that will be created with the resource,
-    //!                   this is a good value to use that will let the hardware optimize clearing
-    //!                   calls for this resource.
-    //! \param PResource The output resource handle that will store the newly created resource.
-    //! \return The resulting code. GResult_OK is returned if succeeded, along with the PResource output,
-    //!         otherwise will return another error code if the call fails.
-    GResult AllocateResource(ID3D12Device* PDevice,
-                             D3D12_RESOURCE_DESC& Desc, 
-                             D3D12_RESOURCE_STATES InitialState,
-                             const D3D12_CLEAR_VALUE* ClearValue,
-                             ID3D12Resource** PResource);
-
-    //! Create the Memory Pool Native Handle. This is internally handled,
-    //! Whereas the Allocator is the method used for handling.
-    //! 
-    //! \param PDevice The device handle from the Application context.
-    //! \param Allocator The data structure used for handling the internal native 
-    //!                  API object.
-    //! \param Desc The description type of the heap.
-    //! \param SizeInBytes The size of the entire memory pool.
-    //! \return The resulting code OK, if the 
-    GResult Create(ID3D12Device* PDevice, 
-                   Allocator* Allocator,
-                   D3D12_HEAP_DESC& Desc, 
-                   U64 SizeInBytes);
-
-    //! Free the resource that was allocated with this MemoryPool.
-    //!
-    //! \param PResource The Resource that will be freed.
-    //! \return The resulting code. GResult_OK if the call succeeds, and the resource is 
-    //!         invalid. Other code retured if failed.
-    GResult FreeResource(ID3D12Resource* PResource);
-
-    //! Release the MemoryPool's API handle. This is a clean up function.
-    //! \return The resulting code. GResult_OK if the call successfully releases the internal
-    //!         handle. Other code if the cleanup fails.
-    GResult Release();
-
-private:
-    //! The Internal API heap handle. This is a D3D12 handle created by the Create() member.
-    //! \sa Create()
-    ID3D12Heap* m_Heap;
-
-    //! The allocator data structure, used for managing allocations from this memory pool.
-    //! \sa Create()
-    Allocator* m_Allocator;
-
-    //! The total size of the memory pool, in bytes.
-    U64 m_TotalSizeInBytes;
-
-    //! The current size of all allocations done in this memory pool.
-    U64 m_CurrentAllocatedBytes;
-
-    //! Map containing resources and their allocation info counterpart.
-    std::unordered_map<ID3D12Resource*, AllocationBlock> m_AllocatedBlocks;
-};
 
 
 //! Descriptor table is an object that holds the handle to a base address of a descriptor heap,
@@ -116,16 +42,16 @@ public:
     //!                       descriptor heap pool.
     //! \return The resulting code. GResult_OK if the creation of the descriptor heap pool succeeds.
     //!         Otherwise, another code will result if the call fails.
-    GResult Create(ID3D12Device* PDevice, 
-                   D3D12_DESCRIPTOR_HEAP_TYPE Type, 
-                   D3D12_DESCRIPTOR_HEAP_FLAGS Flags, 
-                   U32 NumDescriptors);
+    ResultCode Create(ID3D12Device* PDevice, 
+                      D3D12_DESCRIPTOR_HEAP_TYPE Type, 
+                      D3D12_DESCRIPTOR_HEAP_FLAGS Flags, 
+                      U32 NumDescriptors);
 
     //! Releases the descriptor pool handle of the D3D12 Descriptor heap.
     //!
     //! \return The resulting code. GResult_OK if descriptor pool was successfully cleaned up.
     //!         Any other code otherwise should signal a failure.
-    GResult Release();
+    ResultCode Release();
     
     //! Create a Shader Resource View from this descriptor pool.
     //!
@@ -223,11 +149,11 @@ public:
     //! \return A resulting code. GResult_OK should also return with data for the POutTable parameter.
     //!         Should any other result code be returned, then no data will be written onto the POutTable
     //!         parameter.
-    GResult CopyDescriptorsRange(ID3D12Device* PDevice,
-                                 U32 NumSrcDescriptors,
-                                 D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandles,
-                                 U64 OffsetInDescriptorCount,
-                                 DescriptorTable* POutTable);
+    ResultCode CopyDescriptorsRange(ID3D12Device* PDevice,
+                                    U32 NumSrcDescriptors,
+                                    D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandles,
+                                    U64 OffsetInDescriptorCount,
+                                    DescriptorTable* POutTable);
 
     //! Copy a descriptor range that contains consecutive handles, so a single handle is required.
     //!
@@ -236,11 +162,11 @@ public:
     //! \param SrcDescriptorSize
     //! \param DstOffsetDescriptorCount
     //! \return The resulting code.
-    GResult CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
-                                            D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
-                                            U32 SrcDescriptorSize,
-                                            U32 DstOffsetInDescriptorCount,
-                                            DescriptorTable* POutTable);
+    ResultCode CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
+                                               D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
+                                               U32 SrcDescriptorSize,
+                                               U32 DstOffsetInDescriptorCount,
+                                               DescriptorTable* POutTable);
 
     //! Copy Descriptor handle ranges all in one. This will consume copies for descriptor handle ranges,
     //! each range of which contain their own consecutive handles.
@@ -253,13 +179,13 @@ public:
     //! \param NuDescriptorTableOuts
     //! \param PPDescriptorTables
     //! \return The resulting code.
-    GResult CopyDescriptorRanges(ID3D12Device* PDevice,
-                                 U32 NumSrcDescriptorStarts,
-                                 D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
-                                 U32* PSrcDescriptorHandleSizes,
-                                 U32* NumDstOffsetsInDescriptorCount,
-                                 U32 NumDescriptorTablesOuts,
-                                 DescriptorTable** PPDescriptorTables);
+    ResultCode CopyDescriptorRanges(ID3D12Device* PDevice,
+                                    U32 NumSrcDescriptorStarts,
+                                    D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
+                                    U32* PSrcDescriptorHandleSizes,
+                                    U32* NumDstOffsetsInDescriptorCount,
+                                    U32 NumDescriptorTablesOuts,
+                                    DescriptorTable** PPDescriptorTables);
 
     //! Obtain the base cpu address from this descriptor pool.
     //!
@@ -282,6 +208,19 @@ public:
     //!         inpute CPU handle is not within this descriptor table.
     D3D12_GPU_DESCRIPTOR_HANDLE GetGPUAddressFromCPUAddress(D3D12_CPU_DESCRIPTOR_HANDLE Handle);
 
+    //! Get the CPU address with descriptor count offset.
+    //!
+    //! \param DescriptorCountOffset
+    //! \return The CPU Address with the descriptor offset.
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUAddressWithDescriptorCount(UINT DescriptorCountOffset);
+    
+    //! Get the CPU descriptor offset with actual bytes. This must be aligned with the actual incremental
+    //! size of the descriptor heap. This can be found with GetDescriptorHeapType() call.
+    //!
+    //! \param OffsetInBytes The byte offset from the base of the descriptor heap.
+    //! \return The CPU Address handle with the given offset.
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUAddressWithByteOffset(UINT64 OffsetInBytes);
+
 private:
     //! Descriptor heap handle from native context.
     ID3D12DescriptorHeap* m_DescriptorHeap;
@@ -303,40 +242,34 @@ private:
 };
 
 
-class D3D12GPUMemoryManager {
+typedef U32 GraphicsKeyID;
+
+
+class D3D12DescriptorManager 
+{
 public:
-    static void InitializeSamplerPool(ID3D12Device* PDevice, U64 SizeInBytes);
-    static void InitializeRtvDsvHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    static void InitializeCbvSrvUavHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    static void InitializeSceneMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);
-    static void InitializeScratchMemoryHeap(ID3D12Device* PDevice, U64 SizeInBytes);    
 
-    static void InitializeUploadCbvSrvUavDescriptorHeaps(U32 NumHeaps, U32 NumTotalDescriptors);
-    static void InitializeRtvDescriptorHeap(U32 NumTotalDescriptors);
-    static void InitializeDsvDescriptorHeap(U32 NumTotalDescriptors);
-    static void InitializeUploadDescriptorSamplerHeaps(U32 NumHeaps, U32 NumTotalDescriptors);
-
-    //! Upload heaps that are used for rendering. 
-    static void InitializeGPUCbvSrvUavDescriptorHeap(ID3D12Device* PDevice, U32 NumDescriptors);
-    static void InitializeGPUSamplerDescriptorHeap(ID3D12Device* PDevice, U32 NumDescriptors);
-
-    static MemoryPool& GetSamplerHeap();
-    static MemoryPool& GetRtvDsvHeap();
-    static MemoryPool& GetCbvSrvUavHeap();
-
-    static MemoryPool& GetSceneMemoryHeap();
-    static MemoryPool& GetScratchMemoryHeap();
-    static MemoryPool& GetUploadMemoryHeap();
-    static MemoryPool& GetReadbackMemoryHeap();
-
-
-    static DescriptorPool& DescriptorPoolRtv();
-    static DescriptorPool& DescriptorPoolDsv();
-    static DescriptorPool& DescriptorPoolCbvSrvUav();
-    static DescriptorPool& DescriptorPoolSampler();
-
-    static DescriptorPool& UploadDescriptorPoolCbvSrvUav(U32 BufferIndex);
-    static DescriptorPool& UploadDescriptorPoolSamplers(U32 BufferIndex);
+    //! Create and Register descriptor pools for the given key. This will
+    //! also allow for buffered memory pools as well.
+    //!
+    //! \param Key
+    //! \param NumPools
+    //! \return Returns GResult_OK if the creation and registration completes. Any other result code
+    //!         will be returned if the function call fails.
+    static ResultCode CreateAndRegisterDescriptorPools(GraphicsKeyID Key, U32 NumPools);
+    
+    //! Get the desired Descriptor Pool with it's registered Key.
+    //! 
+    //! \param Key
+    //! \param Index
+    //! \return The DescriptorPool object pointer. Returns null if not found.
+    static DescriptorPool* GetDescriptorPool(GraphicsKeyID Key, U32 Index = 0);
+    
+    //! Destroy descriptor pools allocated at Key.
+    //! 
+    //! \param Key
+    //! \return GResult_OK if the descriptor pools at location Key were successfully destroyed.
+    static ResultCode DestroyDescriptorPoolsAtKey(GraphicsKeyID Key);
 
 };
 } // Synthe 

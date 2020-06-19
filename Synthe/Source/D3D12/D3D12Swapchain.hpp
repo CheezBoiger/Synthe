@@ -10,19 +10,7 @@
 
 namespace Synthe {
 
-
-//! The Buffering resources that are used as part of the number of allowed frames in flight.
-struct BufferingResource
-{
-    ID3D12CommandAllocator* PCommandAllocator;
-    ID3D12CommandList* DirectCommandList;
-    ID3D12Fence* PWaitFence;
-    ID3D12Fence* PSignalFence;
-    HANDLE FenceEventWait;
-    HANDLE FenceEventSignal;
-    U32 FenceSignalValue;
-};
-
+class DescriptorPool;
 
 //! Frame Resources that involve the actual swapchain image, with its corresponding 
 //! Render Target View handle.
@@ -30,15 +18,14 @@ struct FrameResource
 {
     //! Queried swapchain Image.
     ID3D12Resource* PSwapchainImage;
-    //! The Render Target Handle.
-    D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle;
     
     //! The upload descriptor heaps to read from shadercode.
+    D3D12_CPU_DESCRIPTOR_HANDLE ImageRTV;
     
     //! Default constructor method for the Rtv Image.
-    FrameResource(ID3D12Resource* PImage = nullptr, D3D12_CPU_DESCRIPTOR_HANDLE Rtv = BASE_CPU_DESCRIPTOR_ALLOC) 
-        : RtvHandle(Rtv)
-        , PSwapchainImage(PImage) { }
+    FrameResource(ID3D12Resource* PImage = nullptr) 
+        : PSwapchainImage(PImage)
+        , ImageRTV(BASE_CPU_DESCRIPTOR_ALLOC) { }
 };
 
 
@@ -46,35 +33,45 @@ struct FrameResource
 //! application may have control over it as well.
 class D3D12Swapchain : public Swapchain {
 public:
+    D3D12Swapchain() 
+        : m_NativeHandle(nullptr) 
+    {
+    }
 
     //! Initialize the Swapchain object.
-    void Initialize(const SwapchainConfig& Config, ID3D12Device* PDevice, IDXGIFactory2* PFactory);
-    
+    void Initialize(const SwapchainConfig& Config, ID3D12CommandQueue* PBackBufferQueue, IDXGIFactory2* PFactory);
+
+    //! Build RTVs.
+    void BuildRTVs(ID3D12Device* PDevice, DescriptorPool* PPool);
+
     //! Resize the swapchain image count. This will not effect the buffering resources, unless the information is
-    //! also different. In order to prevent recreation of buffer resources, use the 
+    //! also different. In order to prevent recreation of buffer resources. 
+    //!
     void Resize(const SwapchainConfig& Config) override;
+
+    //! Clean up.
+    //!
     void CleanUp();
 
     const FrameResource& GetFrameResource(U32 FrameIndex) const { return m_FrameResources[FrameIndex]; }
-    const BufferingResource& GetBufferingResource(U32 BufferIndex) const { return m_BufferingResources[BufferIndex]; }
+
+    //! Get the next frame index, this should be called after presentation.
+    //!
+    //! \return The next frame index.
     U32 GetNextFrameIndex();
-    U32 GetBufferIndex() const { return BufferIndex; }
 
-    ID3D12CommandQueue* GetBackBufferQueue() { return m_BackbufferQueue; }
+    //! Get the total number of allocated frames in this swapchain.
+    //!
+    //! \return The total number of frames.
+    U32 GetTotalFrames() const { return static_cast<U32>(m_FrameResources.size()); }
 
-    void SubmitCommandListsToBackBuffer(ID3D12CommandList* const* PPCommandLists, U32 Count, U32 FrameIndex);
 
 private:
-    GResult CreateBackbufferQueue(ID3D12Device* PDevice);
     void CleanUpFrameResources();
-    void CleanUpBufferingResources();
-    void QueryFrames(ID3D12Device* PDevice, U32 ImageCount);
-    void QueryBufferingResources(ID3D12Device* PDevice, U32 BufferingCount);
+    void QueryFrames(U32 ImageCount);
+
     
     IDXGISwapChain3* m_NativeHandle;
     std::vector<FrameResource> m_FrameResources;
-    std::vector<BufferingResource> m_BufferingResources;
-    ID3D12CommandQueue* m_BackbufferQueue;
-    U32 BufferIndex;
 };
 } // Synthe 

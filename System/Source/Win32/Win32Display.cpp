@@ -18,7 +18,7 @@ void Win32Window::Initialize(const std::string& Title,
         U32 X, U32 Y, U32 Width, U32 Height)
 {
     I32 WideStrCount = MultiByteToWideChar(CP_UTF8, 0, Title.c_str(), Title.size(), 0, 0);
-    wchar_t* TitleW = new wchar_t[WideStrCount + 1];
+    wchar_t* TitleW = new wchar_t[static_cast<U64>(WideStrCount) + 1ULL];
     TitleW[WideStrCount] = L'\0';
     MultiByteToWideChar(CP_UTF8, 0, Title.c_str(), Title.size(), TitleW, WideStrCount);
     

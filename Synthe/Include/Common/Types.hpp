@@ -24,4 +24,25 @@ typedef size_t SIZE;
 typedef I32 B32;
 typedef I64 B64;
 typedef I8 B8;
+
+typedef I32 ResultCode;
+
+enum SResult
+{
+    SResult_OK = 1,
+    SResult_FAILED = 0,
+    SResult_NOT_IMPLEMENTED = -99999,
+    SResult_BAD_CAST,
+    SResult_NOT_INITIALIZED, 
+    SResult_OUT_OF_BOUNDS,
+    SResult_INVALID_CALL,
+    SResult_INVALID_ARGS,
+    SResult_INITIALIZATION_FAILURE,
+    SResult_MEMORY_ALLOCATION_FAILURE,
+    SResult_REFUSE_CALL,
+    SResult_MEMORY_NULL_EXCEPTION,
+    SResult_NOT_AVAILABLE,
+    SResult_OBJECT_NOT_FOUND,
+    SResult_MEMORY_CORRUPTION,
+};
 } // Synthe

@@ -5,6 +5,16 @@
 
 #include "Common/Types.hpp"
 
+#include <stdlib.h>
+
+
+#define MEM_BYTES(B) (Synthe::U64)(B)
+#define MEM_1KB (1024ULL)
+#define MEM_1MB (1024ULL * 1024ULL)
+#define MEM_1GB (1024ULL * 1024ULL * 1024ULL)
+#define ALIGN_BYTES(Ptr, Alignment) ((Ptr) + ((Alignment) - 1)) & (~((Alignment) - 1))
+
+
 namespace Synthe {
 
 
@@ -17,27 +27,95 @@ struct AllocationBlock
 };
 
 
-// Generic Allocator Device, written agnostic for CPU and GPU memory 
-// data structures.
+template<typename Type>
+static Type* Malloc(U64 SizeBytes)
+{
+    return (Type*)malloc(SizeBytes);
+}
+
+
+static void Free(void* MPtr)
+{
+    free(MPtr);
+}
+
+
+//! Generic Allocator Device, written agnostic for CPU and GPU memory 
+//! data structures.
 class Allocator {
 public:
     typedef U64 UPtr;
     Allocator()
-        : m_TotalSizeInBytes(0ull)
-        , m_CurrentUsedBytes(0ull)
-        , m_NumAllocations(0ull)
+        : m_TotalSizeInBytes(0ULL)
+        , m_CurrentUsedBytes(0ULL)
+        , m_NumAllocations(0ULL)
+        , m_ID(0ULL)
+        , m_BaseAddress(0ULL)
     { }
 
     virtual ~Allocator() { }
-    virtual void Initialize(UPtr RawMemRegion, U64 TotalSizeInBytes) { }
+   
+    //! Initialization function for set up of allocator.
+    void Initialize(UPtr BaseAddress, U64 TotalSizeInBytes) { 
+        m_BaseAddress = BaseAddress;
+        m_TotalSizeInBytes = TotalSizeInBytes;
+        m_CurrentUsedBytes = 0ULL;
+        m_NumAllocations = 0ULL;
+        m_ID = static_cast<U64>(0); //< I guess we can use the base address as our ID.
+        OnInitialize();
+    }
+
+    //! Reset the structure, this will clear out and invalidate all allocation blocks from the 
+    //! memory handle.
     virtual void Reset() { }
 
-    virtual B32 Allocate(AllocationBlock* Block, U64 SizeInBytes, U64 Alignment) { }
-    virtual B32 Free(AllocationBlock* Ptr) { }
+    //! Allocate a block of memory.
+    //! 
+    //! \param Block
+    //! \param SizeInBytes
+    //! \param Alignment
+    //! \return GResult_OK if the allocation was made. Any other error code if allocation fails. Block will not 
+    //!         return initialized data if the function fails.
+    virtual ResultCode Allocate(AllocationBlock* Block, U64 SizeInBytes, U64 Alignment) { 
+        return SResult_NOT_IMPLEMENTED; 
+    }
+    
+    //! Free an allocation block handle. 
+    //! 
+    //! \param Ptr 
+    //! \return GResult_OK if the function successfully frees the given memory block. Otherwise,
+    //!         Should the function fail, this could indicate that the given block is 
+    //!         invalid, is out of bounds of the memory block, or fails outright to clean up.
+    virtual ResultCode Free(AllocationBlock* Ptr) { 
+        return SResult_NOT_IMPLEMENTED; 
+    }
+
+    //! Get Total size of the allocator controlled memory.
+    U64 GetTotalSizeBytes() const { return m_TotalSizeInBytes; }
+    
+    //! Get the current amount of memory used by this allocator. 
+    U64 GetCurrentUsedBytes() const { return m_CurrentUsedBytes; }
+
+    //! Get the number of successful allocation calls made for this allocator.
+    U64 GetNumberOfAllocations() const { return m_NumAllocations; }
+
 protected:
-    UPtr m_RawPtr;
-    U64 m_TotalSizeInBytes;
-    U64 m_CurrentUsedBytes;
-    U64 m_NumAllocations;
+
+    virtual void OnInitialize() { }
+
+    //! The starting memory block pointer, or the base.
+    UPtr        m_BaseAddress;
+
+    //! The total size of the memory block that the allocator is in control of.
+    U64         m_TotalSizeInBytes;
+
+    //! Bytes used currently by this allocator, that have not been freed yet.
+    U64         m_CurrentUsedBytes;
+
+    //! Number of allocations made by this allocator.
+    U64         m_NumAllocations;
+    
+    //! Allocator ID.
+    U64         m_ID;
 };
 } // Synthe

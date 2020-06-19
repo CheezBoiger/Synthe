@@ -20,10 +20,10 @@ set (SYNTHE_INCLUDE_FILES
 
 set (SYNTHE_D3D12_FILES
     ${SYNTHE_D3D12_SRC_DIR}/D3D12Buffers.hpp
-    ${SYNTHE_D3D12_SRC_DIR}/D3D12CommandLists.hpp
+    ${SYNTHE_D3D12_SRC_DIR}/D3D12CommandList.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12ComputePipelineState.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12Fence.hpp
-    ${SYNTHE_D3D12_SRC_DIR}/D3D12GPUManager.hpp
+    ${SYNTHE_D3D12_SRC_DIR}/D3D12DescriptorManager.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12GraphicsDevice.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12GraphicsPipelineState.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12Resource.hpp
@@ -32,10 +32,11 @@ set (SYNTHE_D3D12_FILES
     ${SYNTHE_D3D12_SRC_DIR}/D3D12CommandList.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12ComputePipelineState.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12Fence.cpp
-    ${SYNTHE_D3D12_SRC_DIR}/D3D12GPUManager.cpp
+    ${SYNTHE_D3D12_SRC_DIR}/D3D12DescriptorManager.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12GraphicsCommandQueue.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12GraphicsPipelineState.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12GraphicsDevice.cpp
+    ${SYNTHE_D3D12_SRC_DIR}/D3D12MemoryManager.hpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12MemoryManager.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12PhysicalDeviceFeatures.cpp
     ${SYNTHE_D3D12_SRC_DIR}/D3D12Resource.cpp

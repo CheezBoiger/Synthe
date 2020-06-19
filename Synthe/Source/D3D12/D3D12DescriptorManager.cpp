@@ -2,121 +2,50 @@
 // Software for learning purposes.
 // Author: Mario Garcia
 
-#include "D3D12GPUManager.hpp"
+#include "D3D12DescriptorManager.hpp"
 #include "D3D12Buffers.hpp"
 #include "Common/Memory/Allocator.hpp"
 
 #include <vector>
+#include <unordered_map>
 
 namespace Synthe {
 
-
-DescriptorPool PRtvDescriptorPools;
-DescriptorPool PDsvDescriptorPools;
-
-std::vector<DescriptorPool> PCbvSrvUavUploadDescriptorPools;
-std::vector<DescriptorPool> PSamplerUploadDescriptorPools;
-
-DescriptorPool GPUCbvSrvUavDescriptorHeap;
-DescriptorPool GPUSamplerDescriptorHeap;
-
-// Our heaps are massive, but we can use them once.
-MemoryPool PSamplerPool;
-MemoryPool PRtvDsvPool;
-MemoryPool PCbvSrvUavPool;
-MemoryPool PScenePool;
-MemoryPool PScratchPool;
+std::unordered_map<GraphicsKeyID, std::vector<DescriptorPool>> DescriptorPoolCache; 
 
 
-DescriptorPool& D3D12GPUMemoryManager::DescriptorPoolRtv()
+ResultCode D3D12DescriptorManager::CreateAndRegisterDescriptorPools(GraphicsKeyID Key, U32 NumPools)
 {
-    return PRtvDescriptorPools;
-}
-
-
-DescriptorPool& D3D12GPUMemoryManager::DescriptorPoolDsv()
-{
-    return PDsvDescriptorPools;
-}
-
-
-void D3D12GPUMemoryManager::InitializeGPUCbvSrvUavDescriptorHeap(ID3D12Device* PDevice, U32 NumDescriptors)
-{
-    GResult Result = GPUCbvSrvUavDescriptorHeap.Create(PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-                                                       D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, NumDescriptors);
-    if (Result != GResult_OK)
+    DescriptorPoolCache[Key].resize(NumPools);
+    for (U32 I = 0; I < NumPools; ++I)
     {
-        return;
+        DescriptorPoolCache[Key][I] = DescriptorPool();
     }
+    return SResult_OK;
 }
 
 
-GResult MemoryPool::Create(ID3D12Device* PDevice, Allocator* PAllocator, D3D12_HEAP_DESC& Desc, U64 SizeInBytes)
+DescriptorPool* D3D12DescriptorManager::GetDescriptorPool(GraphicsKeyID Key, U32 Index)
 {
-    m_Allocator = PAllocator;
-    m_TotalSizeInBytes = 0;
-    m_CurrentAllocatedBytes = 0;
-    HRESULT Result = PDevice->CreateHeap(&Desc, __uuidof(ID3D12Heap), (void**)&m_Heap);
-    if (FAILED(Result))
+    if (DescriptorPoolCache.find(Key) != DescriptorPoolCache.end())
     {
-        return GResult_CREATION_FAILURE;
+        return &DescriptorPoolCache[Key][Index];
     }
-    m_Allocator->Initialize(0, SizeInBytes);
-    return GResult_OK;
+    return nullptr;
 }
 
 
-GResult MemoryPool::Release()
+ResultCode D3D12DescriptorManager::DestroyDescriptorPoolsAtKey(GraphicsKeyID Key)
 {
-    if (m_Heap)
-        m_Heap->Release();
-    m_Heap = nullptr;
-    m_TotalSizeInBytes = 0;
-    m_CurrentAllocatedBytes = 0;
-    return GResult_OK;
-}
-
-
-GResult MemoryPool::AllocateResource(ID3D12Device* PDevice, 
-                                     D3D12_RESOURCE_DESC& Desc,
-                                     D3D12_RESOURCE_STATES InitialState, 
-                                     const D3D12_CLEAR_VALUE* ClearValue,
-                                     ID3D12Resource** PPResource)
-{
-    // Allocate based on Total Size requested in resource description info.
-    U64 TotalDimensionSize = Desc.Width * Desc.Height * Desc.DepthOrArraySize * Desc.MipLevels;
-    // We also need our pixel depth/width of the format it will be created with.
-    U64 FormatSizeInBytes = static_cast<U64>(GetBitsForPixelFormat(Desc.Format));
-    U64 TotalSizeInBytes = TotalDimensionSize * FormatSizeInBytes;
-    static const U64 FormatChannelAlignmentBytes = 4ULL;
-
-    if (m_Allocator)
+    if (DescriptorPoolCache.find(Key) != DescriptorPoolCache.end())
     {
-        AllocationBlock Block = { };
-        if (!m_Allocator->Allocate(&Block, TotalSizeInBytes, FormatChannelAlignmentBytes))
+        for (U32 I = 0; I < DescriptorPoolCache[Key].size(); ++I)
         {
-            return GResult_MEMORY_ALLOCATION_FAILURE;
+            DescriptorPoolCache[Key][I].Release();
         }
-        PDevice->CreatePlacedResource(m_Heap, 
-                                      Block.Offset, 
-                                      &Desc, 
-                                      InitialState, 
-                                      ClearValue, 
-                                      __uuidof(ID3D12Resource), (void**)PPResource);
-        m_AllocatedBlocks[*PPResource] = Block;
     }
-    else
-    {
-        return GResult_REFUSE_CALL;
-    }
-    return GResult_OK;
-}
-
-
-GResult MemoryPool::FreeResource(ID3D12Resource* PResource)
-{
-    
-    return GResult_OK;
+    DescriptorPoolCache[Key].clear();
+    return SResult_OK;
 }
 
 
@@ -124,6 +53,9 @@ DescriptorPool::DescriptorPool()
     : m_DescriptorHeap(nullptr)
     , m_LastCpuHandle({0})
     , m_LastGpuHandle({0})
+    , m_AlignmentSizeInBytes(0)
+    , m_DescriptorHeapType(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+    , m_TotalDescriptorHeapSizeInBytes(0)
 {
 }
 
@@ -134,7 +66,7 @@ DescriptorPool::~DescriptorPool()
 }
 
 
-GResult DescriptorPool::Create(ID3D12Device* PDevice, D3D12_DESCRIPTOR_HEAP_TYPE Type, D3D12_DESCRIPTOR_HEAP_FLAGS Flags, U32 NumDescriptors)
+ResultCode DescriptorPool::Create(ID3D12Device* PDevice, D3D12_DESCRIPTOR_HEAP_TYPE Type, D3D12_DESCRIPTOR_HEAP_FLAGS Flags, U32 NumDescriptors)
 {
     D3D12_DESCRIPTOR_HEAP_DESC Desc = { };
     Desc.Flags = Flags;
@@ -144,14 +76,14 @@ GResult DescriptorPool::Create(ID3D12Device* PDevice, D3D12_DESCRIPTOR_HEAP_TYPE
     HRESULT Result = PDevice->CreateDescriptorHeap(&Desc, __uuidof(ID3D12DescriptorHeap), (void**)&m_DescriptorHeap);
     if(FAILED(Result))
     {
-        return GResult_CREATION_FAILURE;
+        return GResult_DEVICE_CREATION_FAILURE;
     }
     m_LastCpuHandle = m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
     m_LastGpuHandle = m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
     m_AlignmentSizeInBytes = PDevice->GetDescriptorHandleIncrementSize(Type);
     m_TotalDescriptorHeapSizeInBytes = m_AlignmentSizeInBytes * NumDescriptors;
     m_DescriptorHeapType = Type;
-    return GResult_OK;
+    return SResult_OK;
 }
 
 
@@ -168,12 +100,12 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorPool::GetGPUAddressFromCPUAddress(D3D12_CP
 }
 
 
-GResult DescriptorPool::Release()
+ResultCode DescriptorPool::Release()
 {
     if (m_DescriptorHeap)
         m_DescriptorHeap->Release();
     m_DescriptorHeap = nullptr;
-    return GResult_OK;
+    return SResult_OK;
 }
 
 
@@ -283,7 +215,7 @@ void InitializeDescriptorTable(D3D12_GPU_DESCRIPTOR_HANDLE DescriptorPoolBaseGPU
 }
 
 
-GResult DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
+ResultCode DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
                                              U32 NumSrcDescriptors,
                                              D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandles,
                                              U64 OffsetInDescriptorCount,
@@ -304,17 +236,17 @@ GResult DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
     } 
     else 
     {
-        return GResult_MEMORY_NULL_EXCEPTION;
+        return SResult_MEMORY_NULL_EXCEPTION;
     }
-    return GResult_OK;
+    return SResult_OK;
 }
 
 
-GResult DescriptorPool::CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
-                                                        D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
-                                                        U32 SrcDescriptorSize,
-                                                        U32 DstOffsetDescriptorCount,
-                                                        DescriptorTable* POutTable)
+ResultCode DescriptorPool::CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
+                                                           D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
+                                                           U32 SrcDescriptorSize,
+                                                           U32 DstOffsetDescriptorCount,
+                                                           DescriptorTable* POutTable)
 {
     U64 OffsetInBytes = static_cast<U64>(DstOffsetDescriptorCount * m_AlignmentSizeInBytes);
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorTableOffsetAddress = GetBaseCPUAddress();
@@ -326,19 +258,19 @@ GResult DescriptorPool::CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
     } 
     else 
     {
-        return GResult_MEMORY_NULL_EXCEPTION;
+        return SResult_MEMORY_NULL_EXCEPTION;
     }
-    return GResult_OK;
+    return SResult_OK;
 }
 
 
-GResult DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
-                                             U32 NumSrcDescriptorStarts,
-                                             D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
-                                             U32* PSrcDescriptorHandleCounts,
-                                             U32* NumDstOffsetsInDescriptorCount,
-                                             U32 NumDescriptorTableOuts,
-                                             DescriptorTable** PPDescriptorTables)
+ResultCode DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
+                                                U32 NumSrcDescriptorStarts,
+                                                D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
+                                                U32* PSrcDescriptorHandleCounts,
+                                                U32* NumDstOffsetsInDescriptorCount,
+                                                U32 NumDescriptorTableOuts,
+                                                DescriptorTable** PPDescriptorTables)
 {
     static D3D12_CPU_DESCRIPTOR_HANDLE DstCPUHandles[128];
     static U32 DstCPUSizes[128];
@@ -368,6 +300,6 @@ GResult DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
                              SrcCPUSizes,     
                              m_DescriptorHeapType);
     
-    return GResult_OK;
+    return SResult_OK;
 }
 } // Synthe 
