@@ -4,11 +4,12 @@
 
 #pragma once
 
+#include "Graphics/GraphicsDevice.hpp"
+#include "Common/Memory/Allocator.hpp"
 
 #include "Win32Common.hpp"
 #include "D3D12Swapchain.hpp"
-#include "Graphics/GraphicsDevice.hpp"
-#include "Common/Memory/Allocator.hpp"
+#include "D3D12CommandList.hpp"
 
 
 namespace Synthe {
@@ -35,12 +36,12 @@ enum DescriptorType
 struct BufferingResource
 {
     ID3D12CommandAllocator* PCommandAllocator;
-    ID3D12CommandList* DirectCommandList;
     ID3D12Fence* PWaitFence;
     ID3D12Fence* PSignalFence;
     HANDLE FenceEventWait;
     HANDLE FenceEventSignal;
     U32 FenceSignalValue;
+    U32 FenceWaitValue;
 };
 
 
@@ -59,18 +60,37 @@ public:
 #endif 
         { }
 
+    //! Initialize the D3D12 Context for this graphics device.
     ResultCode Initialize(const GraphicsDeviceConfig& DeviceConfig, 
                        const SwapchainConfig& SwaphchainConfig) override;
+
+    //! Clean up the Graphics Device context.
     ResultCode CleanUp() override;
 
-    U32 GetBufferIndex() const { return m_BufferIndex; }
+    //! The current buffering index. This specifies the current state of resources
+    //! to use when rendering.
+    //!
+    //! \return The current buffer index that corresponds to in flight frames.
+    U32 GetCurrentBufferIndex() const { return m_BufferIndex; }
 
+    //! The back buffer queue that corresponds to the back buffers.
     ID3D12CommandQueue* GetBackBufferQueue() { return m_BackbufferQueue; }
+
+    //! Submit call to present the final back buffer to window.
+    ResultCode Present() override;
+
+    //! Create our resource.
+    ResultCode CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo) override;
+
+    //! Get the buffering resource corresponding to the buffer index.
     const BufferingResource& GetBufferingResource(U32 BufferIndex) const { return m_BufferingResources[BufferIndex]; }
     void SubmitCommandListsToBackBuffer(ID3D12CommandList* const* PPCommandLists, U32 Count, U32 FrameIndex);
 
     U64 GetCurrentUsedMemoryBytesInPool(U64 Key) override;
     U64 GetTotalSizeMemoryBytesForPool(U64 Key) override;
+
+    void Begin() override;
+    void End() override;
 private:
     
     ResultCode CreateBackbufferQueue();
@@ -80,6 +100,7 @@ private:
 
     std::vector<BufferingResource> m_BufferingResources;
     ID3D12CommandQueue* m_BackbufferQueue;
+    D3D12GraphicsCommandList m_BackBufferCommandList;
     U32 m_BufferIndex;
 
     ID3D12Device*       m_Device;
@@ -89,5 +110,6 @@ private:
     IDMLDevice*         m_MLDevice;
 #endif
     D3D12Swapchain      m_Swapchain;
+    D3D12_RESOURCE_HEAP_TIER m_ResourceHeapTier;
 };
 } // Synthe

@@ -17,6 +17,8 @@ public:
     virtual void CleanUp() = 0;
     virtual void Close() = 0;
     virtual void Show() = 0;
+    virtual void SetPosition(U32 X, U32 Y) { }
+    virtual void Resize(U32 Width, U32 Height) { }
     const std::string& GetTitleName() const { return m_Title; }
     U32 GetX() const { return m_X; }
     U32 GetY() const { return m_Y; }

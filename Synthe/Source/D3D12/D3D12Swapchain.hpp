@@ -35,6 +35,7 @@ class D3D12Swapchain : public Swapchain {
 public:
     D3D12Swapchain() 
         : m_NativeHandle(nullptr) 
+        , m_PresentFlags(0)
     {
     }
 
@@ -65,6 +66,11 @@ public:
     //! \return The total number of frames.
     U32 GetTotalFrames() const { return static_cast<U32>(m_FrameResources.size()); }
 
+    //! Present the current back buffer to the user, depending on the flag set when initialized,
+    //! will determine if this call will either wait for submittal, or not.
+    //! 
+    //! \return SResult_OK if the present submit is sent, otherwise GResult_FAILED.
+    ResultCode Present() override;
 
 private:
     void CleanUpFrameResources();
@@ -73,5 +79,7 @@ private:
     
     IDXGISwapChain3* m_NativeHandle;
     std::vector<FrameResource> m_FrameResources;
+    UINT m_PresentFlags;
+    
 };
 } // Synthe 

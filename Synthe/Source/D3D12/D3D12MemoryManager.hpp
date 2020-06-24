@@ -91,6 +91,18 @@ private:
 };
 
 
+//! Resource State keeps track of the resource during recording and 
+//! use.
+struct ResourceState
+{
+    //! The native resource.
+    ID3D12Resource* PResource;
+    
+    //! The current state of the resource.
+    D3D12_RESOURCE_STATES State;
+};
+
+
 //! Memory manager handles all memory pool and allocator descriptions, that are 
 //! used by the device, along with the application. The control here allows 
 //! for full freedom of how we want to allocate our resources, which tend to be 
@@ -109,6 +121,7 @@ public:
         AllocType_FREELIST,
         AllocType_CUSTOM    //< Custom allocation type allows for user to specify their own inherited Allocator.
     };
+    typedef U32 AllocT;
 
     //! Create an allocator concept for our memory pools.
     //!
@@ -116,15 +129,20 @@ public:
     //! \param AllocatorType
     //! \param PAllocator Optional and only used if AllocType_CUSTOM is used.
     static void CreateAndRegisterAllocator(MemoryKeyID Key, 
-                                           AllocType AllocatorType, 
+                                           AllocT AllocatorType, 
                                            Allocator* PAllocator = nullptr);
 
-    //!
+    //! Get an Allocator at the Key location. Returns NULL if 
+    //! no Allocator exists with the given key.
     static Allocator* GetAllocator(MemoryKeyID Key);
 
     //! Destroy memory pools allocated at Key.
+    //! 
+    //! \param Key
+    //! \return SRESULT_OK if the function call is successful.
     static ResultCode DestroyMemoryPoolsAtKey(MemoryKeyID Key);
 
+    //! Destroy an allocator at the Key location.
     static ResultCode DestroyAllocatorAtKey(MemoryKeyID Key);
 
     //! Get the desired Memory Pool with it's registered Key.
@@ -141,6 +159,15 @@ public:
     //! Get the total CPU memory reserved by this memory manager. This is the total
     //! memory pool from all pools of this type.
     static U64 GetTotalCPUReservedInBytes() { return k_TotalCPUMemoryBytes; }
+
+    //! Cache the native gpu resource, once it has been allocated.
+    static ResultCode CacheNativeResource(GPUHandle Key, ID3D12Resource* PResource, D3D12_RESOURCE_STATES InitialState);
+
+    //! Get the cached native resource, if one exists. Otherwise, an error should result.
+    static ResultCode GetNativeResource(GPUHandle Key, ResourceState* POutResource);
+    
+    //! Updates the state of the resource.
+    static ResultCode UpdateResourceState(GPUHandle Key, D3D12_RESOURCE_STATES State);
     
 protected:
     //! Our friends!

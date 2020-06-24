@@ -40,7 +40,6 @@ void D3D12Swapchain::Initialize(const SwapchainConfig& SwapchainConfig,
                                                       nullptr, 
                                                       nullptr, 
                                                       &Swapchain);
-                                                      
     if (FAILED(Result))
     {
         return;
@@ -50,6 +49,10 @@ void D3D12Swapchain::Initialize(const SwapchainConfig& SwapchainConfig,
     m_Config = SwapchainConfig;
 
     QueryFrames(SwapchainConfig.NumFrames);
+    if (m_Config.Flags & SwapchainFlags_ALLOW_TEARING)
+    {
+        m_PresentFlags &= DXGI_PRESENT_ALLOW_TEARING;
+    }
 }
 
 
@@ -139,5 +142,16 @@ void D3D12Swapchain::BuildRTVs(ID3D12Device* PDevice, DescriptorPool* PPool)
         RtvDesc.Texture2D.PlaneSlice = 0;
         Frame.ImageRTV = PPool->CreateRtv(PDevice, RtvDesc, Frame.PSwapchainImage, Frame.ImageRTV);
     }
+}
+
+
+ResultCode D3D12Swapchain::Present()
+{
+    HRESULT Result = m_NativeHandle->Present(m_Config.VSync, m_PresentFlags);
+    if (FAILED(Result))
+    {
+        return GResult_FAILED;
+    }
+    return SResult_OK;
 }
 } // Synthe 

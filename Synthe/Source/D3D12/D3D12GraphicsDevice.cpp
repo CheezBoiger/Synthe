@@ -9,6 +9,15 @@
 namespace Synthe {
 
 
+GPUHandle KGPUHandleAssign = 0ULL;
+
+
+GPUHandle GenerateNewHandle()
+{
+    return ++KGPUHandleAssign; 
+}
+
+
 GraphicsDevice* CreateDeviceD3D12()
 {
     static D3D12GraphicsDevice Device;
@@ -23,6 +32,7 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_TEXTURE, D3D12MemoryManager::AllocType_LINEAR);
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_SCRATCH, D3D12MemoryManager::AllocType_LINEAR);
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_UPLOAD, D3D12MemoryManager::AllocType_LINEAR);
+    D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_READBACK, D3D12MemoryManager::AllocType_LINEAR);
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_RENDER_TARGETS_AND_DEPTH, D3D12MemoryManager::AllocType_LINEAR);
     
     D3D12MemoryManager::CreateAndRegisterMemoryPool(MemoryType_BUFFER);
@@ -31,6 +41,7 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     D3D12MemoryManager::CreateAndRegisterMemoryPool(MemoryType_SCENE);
     D3D12MemoryManager::CreateAndRegisterMemoryPool(MemoryType_TEXTURE);
     D3D12MemoryManager::CreateAndRegisterMemoryPool(MemoryType_RENDER_TARGETS_AND_DEPTH);
+    D3D12MemoryManager::CreateAndRegisterMemoryPool(MemoryType_READBACK);
 
     D3D12_HEAP_DESC HeapDesc = { };
     HeapDesc.Alignment = 0;
@@ -51,7 +62,6 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     D3D12MemoryManager::GetAllocator(MemoryType_BUFFER)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_BUFFER)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_BUFFER), HeapDesc);
-    
 
     HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
     HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(512);
@@ -59,15 +69,17 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     D3D12MemoryManager::GetMemoryPool(MemoryType_RENDER_TARGETS_AND_DEPTH)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_RENDER_TARGETS_AND_DEPTH), HeapDesc);
 
-    HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+    HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
     HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(64);
     HeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
-    HeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
     D3D12MemoryManager::GetAllocator(MemoryType_UPLOAD)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_UPLOAD)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_UPLOAD), HeapDesc);
     
-    
+    HeapDesc.Properties.Type = D3D12_HEAP_TYPE_READBACK;
+    D3D12MemoryManager::GetAllocator(MemoryType_READBACK)->Initialize(0ULL, HeapDesc.SizeInBytes);
+    D3D12MemoryManager::GetMemoryPool(MemoryType_READBACK)->Create(PDevice,
+        D3D12MemoryManager::GetAllocator(MemoryType_READBACK), HeapDesc);
 }
 
 void InitializeDescriptorHeaps(ID3D12Device* PDevice, U32 BufferingCount)
@@ -89,7 +101,7 @@ void InitializeDescriptorHeaps(ID3D12Device* PDevice, U32 BufferingCount)
     for (U32 I = 0; I < BufferingCount; ++I)
     {
         D3D12DescriptorManager::GetDescriptorPool(DescriptorType_CBV_SRV_UAV, I)->Create(PDevice, 
-            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 1024);
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 8192);
         D3D12DescriptorManager::GetDescriptorPool(DescriptorType_SAMPLER, I)->Create(PDevice,
             D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 1024);
     }
@@ -102,6 +114,7 @@ struct DeviceFeatureSupport
     D3D12_VARIABLE_SHADING_RATE_TIER VariableShadingRate;
     D3D12_CONSERVATIVE_RASTERIZATION_TIER ConservativeRaster;
     D3D12_TILED_RESOURCES_TIER TiledResources;
+    D3D12_RESOURCE_HEAP_TIER ResourceHeapTier;
     BOOL BarycentricsSupported;
 };
 
@@ -236,6 +249,7 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
             D3D12_FEATURE_DATA_D3D12_OPTIONS FeatureOptions = { };
             TempInfo.FeatureSupport.ConservativeRaster = FeatureOptions.ConservativeRasterizationTier;
             TempInfo.FeatureSupport.TiledResources = FeatureOptions.TiledResourcesTier;
+            TempInfo.FeatureSupport.ResourceHeapTier = FeatureOptions.ResourceHeapTier;
         }
 
         {
@@ -277,6 +291,7 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
     m_Features.SharedSystemMemory = BestInfo.SharedMemoryBytes;
     m_Features.DedicatedSystemMemoryInBytes = BestInfo.DedicatedSystemMemoryBytes;
     m_Features.DedicatedVideoMemoryInBytes = BestInfo.DedicatedVideoMemoryBytes;
+    m_ResourceHeapTier = BestInfo.FeatureSupport.ResourceHeapTier;
 
     InitializeMemoryHeaps(m_Device);
     InitializeDescriptorHeaps(m_Device, SwapchainConfig.Buffering);    
@@ -332,6 +347,7 @@ ResultCode D3D12GraphicsDevice::CreateBackbufferQueue()
 
 void D3D12GraphicsDevice::CleanUpBufferingResources()
 {
+    m_BackBufferCommandList.Release();
     for (U32 I = 0; I < m_BufferingResources.size(); ++I) 
     {
         BufferingResource& Buffer = m_BufferingResources[I];
@@ -339,7 +355,6 @@ void D3D12GraphicsDevice::CleanUpBufferingResources()
         Buffer.PSignalFence->Release();
         CloseHandle(Buffer.FenceEventSignal);
         CloseHandle(Buffer.FenceEventWait);
-        Buffer.DirectCommandList->Release();
         Buffer.PCommandAllocator->Release();
     }  
 }
@@ -349,6 +364,7 @@ void D3D12GraphicsDevice::QueryBufferingResources(U32 BufferingCount)
 {
     CleanUpBufferingResources();
     m_BufferingResources.resize(BufferingCount);
+    std::vector<ID3D12CommandAllocator*> PPerBufferAllocators(BufferingCount);
     for (U32 I = 0; I < m_BufferingResources.size(); ++I)
     {
         BufferingResource& Buffer = m_BufferingResources[I];
@@ -360,10 +376,10 @@ void D3D12GraphicsDevice::QueryBufferingResources(U32 BufferingCount)
         m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PSignalFence);
         m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PWaitFence);
         m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&Buffer.PCommandAllocator);
-        
-        if (Buffer.PCommandAllocator)
-            m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Buffer.PCommandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&Buffer.DirectCommandList);
+        PPerBufferAllocators[I] = Buffer.PCommandAllocator;
     }
+    m_BackBufferCommandList.Initialize(m_Device, BufferingCount, PPerBufferAllocators.data(), 
+        D3D12_COMMAND_LIST_TYPE_DIRECT);
 }
 
 
@@ -386,5 +402,90 @@ U64 D3D12GraphicsDevice::GetTotalSizeMemoryBytesForPool(U64 Key)
         return 0ULL;
     }
     return PAllocator->GetTotalSizeBytes();
+}
+
+
+ResultCode D3D12GraphicsDevice::Present()
+{
+    return m_Swapchain.Present();
+}
+
+
+void D3D12GraphicsDevice::Begin()
+{    
+    // Next frame to work on.
+    m_BufferIndex = m_Swapchain.GetNextFrameIndex() % static_cast<U32>(m_BufferingResources.size());
+
+    BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
+    Buffer.PCommandAllocator->Reset();
+
+    // Submit to next buffer index.
+    m_BackBufferCommandList.SetCurrentIdx(m_BufferIndex);
+    m_BackBufferCommandList.Reset();
+}
+
+
+void D3D12GraphicsDevice::End()
+{
+    BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
+    m_BackbufferQueue->Signal(Buffer.PSignalFence, Buffer.FenceSignalValue);
+    
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo)
+{
+    *Out = GenerateNewHandle();
+    ID3D12Resource* PResource = nullptr;
+    
+    MemoryType MemType = MemoryType_BUFFER;
+    switch (PCreateInfo->Dimension)
+    {
+        case ResourceDimension_BUFFER:
+            MemType = MemoryType_BUFFER;
+            break;
+        default:
+            MemType = MemoryType_TEXTURE;
+            break;
+    }
+    
+    D3D12_RESOURCE_DESC ResourceDesc = { };
+    ResourceDesc.Width = PCreateInfo->Width;
+    ResourceDesc.Height = PCreateInfo->Height;
+    ResourceDesc.DepthOrArraySize = PCreateInfo->DepthOrArraySize;
+    ResourceDesc.Format = GetCommonFormatToDXGIFormat(PCreateInfo->ResourceFormat);
+    ResourceDesc.Alignment = 0ULL;
+    ResourceDesc.Dimension = GetResourceDimension(PCreateInfo->Dimension);
+    ResourceDesc.MipLevels = PCreateInfo->Mips;
+    ResourceDesc.SampleDesc.Count = static_cast<U32>(PCreateInfo->SampleCount);
+    ResourceDesc.SampleDesc.Quality  = static_cast<U32>(PCreateInfo->SampleQuality);
+    
+    if (ResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+    {    
+        ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    }
+    else
+    {
+        ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    }
+
+    D3D12_CLEAR_VALUE ClearValue = { };
+    D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
+
+    ResultCode Result = D3D12MemoryManager::GetMemoryPool(MemType)->AllocateResource(m_Device, 
+        ResourceDesc, InitialState, 
+        ResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ? nullptr : &ClearValue, 
+        &PResource);
+
+    if (Result == SResult_OK) 
+    {
+        ResultCode CacheResult = D3D12MemoryManager::CacheNativeResource(*Out, PResource, InitialState);
+    } 
+    else 
+    {
+        // Handle error.
+    }
+
+    return Result;
 }
 } // Synthe

@@ -57,3 +57,9 @@ DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format);
 //! \return The size in bits for the input format. 0 is returned if bit width is nonexistant,
 //!         namely if the format is unknown.
 UINT GetBitsForPixelFormat(DXGI_FORMAT Format);
+
+//! Get the native D3D12 Resource Dimension from the common application value. 
+//!
+//! \param Dimension Common application dimension.
+//! \return The D3D12 resource dimension. This is the native resource dimension used by D3D12 runtime.
+D3D12_RESOURCE_DIMENSION GetResourceDimension(Synthe::ResourceDimension Dimension);

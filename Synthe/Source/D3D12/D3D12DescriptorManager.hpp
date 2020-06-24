@@ -11,6 +11,9 @@
 namespace Synthe {
 
 
+typedef U64 DescriptorKeyID;
+
+
 //! Descriptor table is an object that holds the handle to a base address of a descriptor heap,
 //! along with the size of the table. These are used to represent arrays of descriptors to be 
 //! bound on render command recording.
@@ -242,9 +245,6 @@ private:
 };
 
 
-typedef U32 GraphicsKeyID;
-
-
 class D3D12DescriptorManager 
 {
 public:
@@ -256,20 +256,21 @@ public:
     //! \param NumPools
     //! \return Returns GResult_OK if the creation and registration completes. Any other result code
     //!         will be returned if the function call fails.
-    static ResultCode CreateAndRegisterDescriptorPools(GraphicsKeyID Key, U32 NumPools);
+    static ResultCode CreateAndRegisterDescriptorPools(DescriptorKeyID Key, U32 NumPools);
     
     //! Get the desired Descriptor Pool with it's registered Key.
     //! 
     //! \param Key
     //! \param Index
     //! \return The DescriptorPool object pointer. Returns null if not found.
-    static DescriptorPool* GetDescriptorPool(GraphicsKeyID Key, U32 Index = 0);
+    static DescriptorPool* GetDescriptorPool(DescriptorKeyID Key, U32 Index = 0);
     
     //! Destroy descriptor pools allocated at Key.
     //! 
     //! \param Key
     //! \return GResult_OK if the descriptor pools at location Key were successfully destroyed.
-    static ResultCode DestroyDescriptorPoolsAtKey(GraphicsKeyID Key);
+    static ResultCode DestroyDescriptorPoolsAtKey(DescriptorKeyID Key);
+
 
 };
 } // Synthe 

@@ -44,5 +44,6 @@ enum SResult
     SResult_NOT_AVAILABLE,
     SResult_OBJECT_NOT_FOUND,
     SResult_MEMORY_CORRUPTION,
+    SResult_ALREADY_EXISTS
 };
 } // Synthe

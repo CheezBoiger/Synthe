@@ -27,6 +27,9 @@ void Win32Window::Initialize(const std::string& Title,
         X, Y, Width, Height, NULL, NULL, GetModuleHandle(NULL), NULL);
     delete[] TitleW;
     if (!Handle) return;
+
+    SetPropW(Handle, WINDOW_PROP_NAME, this);
+
     m_NativeHandle = reinterpret_cast<U64>(Handle);
     m_X = X;
     m_Y = Y;

@@ -53,4 +53,15 @@ void DestroyAppWindow(Window* PWindow)
     }
     delete PWin32Window;
 }
+
+
+void PollEvents()
+{
+    MSG Msg;
+    while (PeekMessage(&Msg, NULL, 0, 0, PM_REMOVE))
+    {
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
+}
 } // Synthe

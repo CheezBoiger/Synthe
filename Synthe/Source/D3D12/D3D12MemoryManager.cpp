@@ -14,6 +14,7 @@ namespace Synthe {
 
 std::unordered_map<D3D12MemoryManager::MemoryKeyID, MemoryPool> MemoryPoolCache;
 std::unordered_map<D3D12MemoryManager::MemoryKeyID, Allocator*> AllocatorPoolCache;
+std::unordered_map<GPUHandle, ResourceState> ResourceCache;
 
 U64 D3D12MemoryManager::k_TotalGPUMemoryBytes = 0ULL;
 U64 D3D12MemoryManager::k_TotalCPUMemoryBytes = 0ULL;
@@ -95,8 +96,9 @@ ResultCode MemoryPool::AllocateResource(ID3D12Device* PDevice,
     U64 TotalDimensionSize = Desc.Width * Desc.Height * Desc.DepthOrArraySize * Desc.MipLevels;
     // We also need our pixel depth/width of the format it will be created with.
     U64 FormatSizeInBytes = static_cast<U64>(GetBitsForPixelFormat(Desc.Format));
-    U64 TotalSizeInBytes = TotalDimensionSize * FormatSizeInBytes;
-    static const U64 FormatChannelAlignmentBytes = 4ULL;
+    U64 SampleCount = Desc.SampleDesc.Count;
+    U64 TotalSizeInBytes = TotalDimensionSize * FormatSizeInBytes * SampleCount;
+    static const U64 FormatChannelAlignmentBytes = MEM_1KB * MEM_BYTES(64);
 
     if (m_Allocator)
     {
@@ -105,12 +107,8 @@ ResultCode MemoryPool::AllocateResource(ID3D12Device* PDevice,
         {
             return SResult_MEMORY_ALLOCATION_FAILURE;
         }
-        PDevice->CreatePlacedResource(m_Heap, 
-                                      Block.Offset, 
-                                      &Desc, 
-                                      InitialState, 
-                                      ClearValue, 
-                                      __uuidof(ID3D12Resource), (void**)PPResource);
+        HRESULT Result = PDevice->CreatePlacedResource(m_Heap, Block.StartAddress, 
+            &Desc, InitialState, ClearValue, __uuidof(ID3D12Resource), (void**)PPResource);
         m_AllocatedBlocks[*PPResource] = Block;
     }
     else
@@ -141,7 +139,7 @@ ResultCode MemoryPool::FreeResource(ID3D12Resource* PResource)
 
 
 void D3D12MemoryManager::CreateAndRegisterAllocator(MemoryKeyID Key, 
-                                                    AllocType AllocatorType, 
+                                                    AllocT AllocatorType, 
                                                     Allocator* PAllocator)
 {
     if (AllocatorPoolCache.find(Key) == AllocatorPoolCache.end())
@@ -152,11 +150,11 @@ void D3D12MemoryManager::CreateAndRegisterAllocator(MemoryKeyID Key,
                 AllocatorPoolCache[Key] = PAllocator;
                 break;
             case AllocType_LINEAR:
-                AllocatorPoolCache[Key] = Malloc<LinearAllocator>(sizeof(LinearAllocator));
+                AllocatorPoolCache[Key] = Malloc<LinearAllocator>();
                 break;
             case AllocType_NEW:
             default:
-                AllocatorPoolCache[Key] = Malloc<NewAllocator>(sizeof(NewAllocator));
+                AllocatorPoolCache[Key] = Malloc<NewAllocator>();
         }
     }
 }
@@ -182,5 +180,38 @@ ResultCode D3D12MemoryManager::DestroyAllocatorAtKey(MemoryKeyID Key)
         return SResult_OK;
     }
     return SResult_OBJECT_NOT_FOUND;
+}
+
+
+ResultCode D3D12MemoryManager::CacheNativeResource(GPUHandle Key, ID3D12Resource* PResource, D3D12_RESOURCE_STATES InitialState)
+{
+    if (ResourceCache.find(Key) != ResourceCache.end())
+    {
+        return SResult_ALREADY_EXISTS;
+    }
+    ResourceCache[Key] = { PResource, InitialState };
+    return SResult_OK;
+}
+
+
+ResultCode D3D12MemoryManager::GetNativeResource(GPUHandle Key, ResourceState* POutResource)
+{
+    if (ResourceCache.find(Key) == ResourceCache.end())
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    *POutResource = ResourceCache[Key];
+    return SResult_OK;
+}
+
+
+ResultCode D3D12MemoryManager::UpdateResourceState(GPUHandle Key, D3D12_RESOURCE_STATES State)
+{
+    if (ResourceCache.find(Key) == ResourceCache.end())
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    ResourceCache[Key].State = State;
+    return SResult_OK;
 }
 } // Synthe

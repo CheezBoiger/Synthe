@@ -19,6 +19,9 @@ public:
     virtual void Resize(const SwapchainConfig& Config) = 0;
 
     SwapchainConfig GetConfig() const { return m_Config; } 
+
+    virtual ResultCode Present() { return SResult_NOT_IMPLEMENTED; }
+
 protected:
     SwapchainConfig m_Config;
 };

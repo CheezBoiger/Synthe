@@ -72,11 +72,14 @@ struct SwapchainConfig
     //! Note: The larger the buffering value, the more memory required for each buffering
     //!       resource.
     U32 Buffering;
+    //! Enable Vertical Syncronization.
+    B32 VSync;
 };
 
 
 enum GFormat
 {
+    GFormat_UNKNOWN,
     GFormat_R8G8B8A8_UNORM,
     GFormat_R16G16B16A16_FLOAT,
     GFormat_R16G16_FLOAT
@@ -113,6 +116,40 @@ struct GraphicsDeviceConfig
 struct InstancedKey
 {
     
+};
+
+
+typedef enum ResourceUsage
+{
+    ResourceUsage_VERTEX_BUFFER         = (1 << 0),
+    ResourceUsage_INDEX_BUFFER          = (1 << 1),
+    ResourceUsage_UNORDERED_ACCESS      = (1 << 2),
+    ResourceUsage_SHADER_RESOURCE       = (1 << 3),
+    ResourceUsage_DEPTH_STENCIL         = (1 << 4),
+    ResourceUsage_RENDER_TARGET         = (1 << 5)
+} ResourceUsage;
+
+typedef U32 ResourceUsageFlags;
+
+typedef enum ResourceDimension
+{
+    ResourceDimension_BUFFER,
+    ResourceDimension_TEXTURE1D,
+    ResourceDimension_TEXTURE2D,
+    ResourceDimension_TEXTURE3D,
+} ResourceDimension;
+
+struct ResourceCreateInfo
+{
+    ResourceDimension       Dimension;
+    Format                  ResourceFormat;
+    U64                     Width;
+    U32                     Height;
+    U16                     DepthOrArraySize;
+    U16                     Mips;
+    ResourceUsageFlags      Usage;
+    U16                     SampleCount;
+    U16                     SampleQuality;
 };
 
 

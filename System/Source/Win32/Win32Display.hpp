@@ -28,5 +28,8 @@ public:
     virtual void CleanUp() override;
     virtual void Close() override;
     virtual void Show() override;
+
+    void UpdatePosition(U32 X, U32 Y);
+    void UpdateSize(U32 Width, U32 Height);
 };
 } // Synthe

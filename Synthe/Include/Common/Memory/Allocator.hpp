@@ -17,26 +17,42 @@
 
 namespace Synthe {
 
+typedef U8 MemT;
 
 struct AllocationBlock
 {
-    U64 Start;
-    U64 Offset;
+    U64 StartAddress;
+    U64 SizeInBytes;
     U32 AllocationID;
     U32 AllocatorPoolID;
 };
 
 
-template<typename Type>
-static Type* Malloc(U64 SizeBytes)
+template<typename Type, typename... Arguments>
+static Type* Malloc(Arguments... Args)
 {
-    return (Type*)malloc(SizeBytes);
+    return new Type(Args...);
 }
 
 
-static void Free(void* MPtr)
+template<typename Type, typename... Arguments>
+static Type* MallocArray(U64 Count)
 {
-    free(MPtr);
+    return new Type[Count];
+}
+
+
+template<typename Type>
+static void Free(Type* MPtr)
+{
+    delete MPtr;
+}
+
+
+template<typename Type>
+static void FreeArray(Type* MPtr)
+{
+    delete[] MPtr;
 }
 
 
@@ -99,6 +115,9 @@ public:
     //! Get the number of successful allocation calls made for this allocator.
     U64 GetNumberOfAllocations() const { return m_NumAllocations; }
 
+    //! Get the unique ID of the allocator.
+    U32 GetID() const { return m_ID; }
+
 protected:
 
     virtual void OnInitialize() { }
@@ -116,6 +135,6 @@ protected:
     U64         m_NumAllocations;
     
     //! Allocator ID.
-    U64         m_ID;
+    U32         m_ID;
 };
 } // Synthe

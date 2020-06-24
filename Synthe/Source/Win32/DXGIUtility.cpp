@@ -68,7 +68,7 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
             return 32;
         // Unknown, we assume it is raw buffer, no formatting.
         default:
-            return 0;
+            return 1;
     }
 }
 
@@ -79,5 +79,23 @@ DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format)
         case Synthe::GFormat_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
         case Synthe::GFormat_R16G16B16A16_FLOAT: return DXGI_FORMAT_R16G16B16A16_FLOAT;
         default: return DXGI_FORMAT_UNKNOWN;
+    }
+}
+
+
+D3D12_RESOURCE_DIMENSION GetResourceDimension(Synthe::ResourceDimension Dimension)
+{
+    switch (Dimension)
+    {
+        case Synthe::ResourceDimension_BUFFER:
+            return D3D12_RESOURCE_DIMENSION_BUFFER;
+        case Synthe::ResourceDimension_TEXTURE1D:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+        case Synthe::ResourceDimension_TEXTURE2D:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        case Synthe::ResourceDimension_TEXTURE3D:
+            return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+        default:
+            return D3D12_RESOURCE_DIMENSION_UNKNOWN;
     }
 }

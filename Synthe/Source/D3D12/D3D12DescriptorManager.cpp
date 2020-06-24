@@ -11,10 +11,10 @@
 
 namespace Synthe {
 
-std::unordered_map<GraphicsKeyID, std::vector<DescriptorPool>> DescriptorPoolCache; 
+std::unordered_map<DescriptorKeyID, std::vector<DescriptorPool>> DescriptorPoolCache; 
 
 
-ResultCode D3D12DescriptorManager::CreateAndRegisterDescriptorPools(GraphicsKeyID Key, U32 NumPools)
+ResultCode D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorKeyID Key, U32 NumPools)
 {
     DescriptorPoolCache[Key].resize(NumPools);
     for (U32 I = 0; I < NumPools; ++I)
@@ -25,7 +25,7 @@ ResultCode D3D12DescriptorManager::CreateAndRegisterDescriptorPools(GraphicsKeyI
 }
 
 
-DescriptorPool* D3D12DescriptorManager::GetDescriptorPool(GraphicsKeyID Key, U32 Index)
+DescriptorPool* D3D12DescriptorManager::GetDescriptorPool(DescriptorKeyID Key, U32 Index)
 {
     if (DescriptorPoolCache.find(Key) != DescriptorPoolCache.end())
     {
@@ -35,7 +35,7 @@ DescriptorPool* D3D12DescriptorManager::GetDescriptorPool(GraphicsKeyID Key, U32
 }
 
 
-ResultCode D3D12DescriptorManager::DestroyDescriptorPoolsAtKey(GraphicsKeyID Key)
+ResultCode D3D12DescriptorManager::DestroyDescriptorPoolsAtKey(DescriptorKeyID Key)
 {
     if (DescriptorPoolCache.find(Key) != DescriptorPoolCache.end())
     {

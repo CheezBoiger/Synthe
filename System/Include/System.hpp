@@ -14,4 +14,6 @@ void InitializeSystem();
 
 Window* CreateAppWindow();
 void DestroyAppWindow(Window* PWindow);
+
+void PollEvents();
 } // Synthe
