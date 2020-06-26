@@ -95,7 +95,7 @@ int main(int c, char* argv[])
 
     GPUHandle ResourceHandle = 0;
     ResourceCreateInfo CreateInfo = { };
-    CreateInfo.Width = 256;
+    CreateInfo.Width = MEM_BYTES(256) * MEM_1MB;
     CreateInfo.Height = 1;
     CreateInfo.DepthOrArraySize = 1;
     CreateInfo.Mips = 1;
@@ -103,16 +103,32 @@ int main(int c, char* argv[])
     CreateInfo.Usage = ResourceUsage_SHADER_RESOURCE | ResourceUsage_VERTEX_BUFFER;
     CreateInfo.SampleCount = 1;
     CreateInfo.SampleQuality = 0;
-    
-    PDevice->CreateResource(&ResourceHandle, &CreateInfo);
+
+    ResourceCreateInfo ImageInfo = { };
+    ImageInfo.Width = 1920;
+    ImageInfo.Height = 1080;
+    ImageInfo.Dimension = ResourceDimension_TEXTURE2D;
+    ImageInfo.DepthOrArraySize = 1;
+    ImageInfo.Mips = 1;
+    ImageInfo.SampleCount = 1;
+    ImageInfo.Usage = ResourceUsage_SHADER_RESOURCE | ResourceUsage_RENDER_TARGET;
+    ImageInfo.ResourceFormat = GFormat_R8G8B8A8_UNORM;
+
+    ClearValue Clear = { };
+
+    PDevice->CreateResource(&ResourceHandle, &CreateInfo, nullptr);
     CreateInfo.Width = 1024;
-    PDevice->CreateResource(&ResourceHandle, &CreateInfo);
+    PDevice->CreateResource(&ResourceHandle, &CreateInfo, nullptr);
+    PDevice->CreateResource(&ResourceHandle, &ImageInfo, nullptr);
 
     PDevice->DestroyResource(ResourceHandle);
+
+    U64 MemoryBytes = PDevice->GetCurrentUsedMemoryBytesInPool(MemoryType_TEXTURE) / MEM_1MB;
 
     while (!PWindow->GetShouldClose()) 
     {
         PollEvents();
+        PDevice->Present();
     }
 
     PDevice->CleanUp();    

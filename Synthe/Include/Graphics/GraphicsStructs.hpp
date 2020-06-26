@@ -139,6 +139,14 @@ typedef enum ResourceDimension
     ResourceDimension_TEXTURE3D,
 } ResourceDimension;
 
+
+typedef struct ClearValue {
+    R32         Color[4];
+    R32         Depth;
+    U8          Stencil;
+} ClearValue;
+
+
 struct ResourceCreateInfo
 {
     ResourceDimension       Dimension;

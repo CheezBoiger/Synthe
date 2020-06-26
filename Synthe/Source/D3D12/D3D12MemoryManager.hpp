@@ -102,7 +102,6 @@ struct ResourceState
     D3D12_RESOURCE_STATES State;
 };
 
-
 //! Memory manager handles all memory pool and allocator descriptions, that are 
 //! used by the device, along with the application. The control here allows 
 //! for full freedom of how we want to allocate our resources, which tend to be 
@@ -164,14 +163,30 @@ public:
     static ResultCode CacheNativeResource(GPUHandle Key, ID3D12Resource* PResource, D3D12_RESOURCE_STATES InitialState);
 
     //! Get the cached native resource, if one exists. Otherwise, an error should result.
+    //!
     static ResultCode GetNativeResource(GPUHandle Key, ResourceState* POutResource);
     
     //! Updates the state of the resource.
+    //!
+    //! \param Key
+    //! \param State
+    //! \return 
     static ResultCode UpdateResourceState(GPUHandle Key, D3D12_RESOURCE_STATES State);
     
 protected:
     //! Our friends!
     friend class MemoryPool;
+
+    //! Get the cached resource size. Caches an allocation block if not doesn't already exist.
+    //! This function should prevent querying from the driver if need be.
+    //!
+    //! \param PDevice
+    //! \param Desc
+    //! \param Out
+    //! \return SResult_OK if the search is successful.
+    static ResultCode GetCachedResourceSize(ID3D12Device* PDevice, 
+                                            D3D12_RESOURCE_DESC& Desc, 
+                                            D3D12_RESOURCE_ALLOCATION_INFO* Out);
 
     //! Total memory reserved by GPU context.
     static U64 k_TotalGPUMemoryBytes;

@@ -80,7 +80,7 @@ public:
     ResultCode Present() override;
 
     //! Create our resource.
-    ResultCode CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo) override;
+    ResultCode CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo, const ClearValue* PClearValue) override;
 
     //! Get the buffering resource corresponding to the buffer index.
     const BufferingResource& GetBufferingResource(U32 BufferIndex) const { return m_BufferingResources[BufferIndex]; }
@@ -92,24 +92,31 @@ public:
     void Begin() override;
     void End() override;
 private:
-    
+    //! Creates the back buffer queue.
     ResultCode CreateBackbufferQueue();
+
+    //! Cleans up buffering resources.
     void CleanUpBufferingResources();
+
+    //! Queries for frame in flight buffers.
     void QueryBufferingResources(U32 BufferingCount);
     
+    //! Our buffering resources.
+    std::vector<BufferingResource>      m_BufferingResources;
 
-    std::vector<BufferingResource> m_BufferingResources;
-    ID3D12CommandQueue* m_BackbufferQueue;
-    D3D12GraphicsCommandList m_BackBufferCommandList;
-    U32 m_BufferIndex;
+    //! 
+    ID3D12CommandQueue*                 m_BackbufferQueue;
+    D3D12GraphicsCommandList            m_BackBufferCommandList;
 
-    ID3D12Device*       m_Device;
-    IDXGIFactory2*      m_PFactory;
-    IDXGIAdapter1*      m_Adapter;
+    U32                                 m_BufferIndex;
+
+    ID3D12Device*                       m_Device;
+    IDXGIFactory2*                      m_PFactory;
+    IDXGIAdapter1*                      m_Adapter;
 #if DIRECTML_COMPATIBLE
-    IDMLDevice*         m_MLDevice;
+    IDMLDevice*                         m_MLDevice;
 #endif
-    D3D12Swapchain      m_Swapchain;
-    D3D12_RESOURCE_HEAP_TIER m_ResourceHeapTier;
+    D3D12Swapchain                      m_Swapchain;
+    D3D12_RESOURCE_HEAP_TIER            m_ResourceHeapTier;
 };
 } // Synthe

@@ -17,7 +17,9 @@ void LinearAllocator::OnInitialize()
 ResultCode LinearAllocator::Allocate(AllocationBlock* Block, U64 SizeInBytes, U64 Alignment)
 {
     // Expand needed bytes for alignment, to use on aligning the address.
-    U64 NeededBytes = SizeInBytes + Alignment;
+    // Find the padding of the requested Size, and apply to the Expanded/Needed Size.
+    U64 Padding = (Alignment - (SizeInBytes & (Alignment - 1))) & (Alignment - 1);
+    U64 NeededBytes = (SizeInBytes + (Alignment - 1)) & ~(Alignment - 1);
     // Just calculate the last address bound of the memory block.
     U64 LastPtr = m_BaseAddress + m_TotalSizeInBytes;
     U64 FuturePtr = m_Top + NeededBytes;

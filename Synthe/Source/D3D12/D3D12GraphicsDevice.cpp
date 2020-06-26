@@ -80,6 +80,14 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     D3D12MemoryManager::GetAllocator(MemoryType_READBACK)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_READBACK)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_READBACK), HeapDesc);
+
+    HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+    HeapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+    HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(512);
+    HeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    D3D12MemoryManager::GetAllocator(MemoryType_TEXTURE)->Initialize(0ULL, HeapDesc.SizeInBytes);
+    D3D12MemoryManager::GetMemoryPool(MemoryType_TEXTURE)->Create(PDevice,
+        D3D12MemoryManager::GetAllocator(MemoryType_TEXTURE), HeapDesc);
 }
 
 void InitializeDescriptorHeaps(ID3D12Device* PDevice, U32 BufferingCount)
@@ -433,7 +441,9 @@ void D3D12GraphicsDevice::End()
 }
 
 
-ResultCode D3D12GraphicsDevice::CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo)
+ResultCode D3D12GraphicsDevice::CreateResource(GPUHandle* Out, 
+                                               const ResourceCreateInfo* PCreateInfo, 
+                                               const ClearValue* PClearValue)
 {
     *Out = GenerateNewHandle();
     ID3D12Resource* PResource = nullptr;
@@ -470,11 +480,23 @@ ResultCode D3D12GraphicsDevice::CreateResource(GPUHandle* Out, const ResourceCre
     }
 
     D3D12_CLEAR_VALUE ClearValue = { };
+
+    if (PClearValue)
+    {
+        ClearValue.Color[0] = PClearValue->Color[0];
+        ClearValue.Color[1] = PClearValue->Color[1];
+        ClearValue.Color[2] = PClearValue->Color[2];
+        ClearValue.Color[3] = PClearValue->Color[3];
+        ClearValue.DepthStencil.Depth = PClearValue->Depth;
+        ClearValue.DepthStencil.Stencil = PClearValue->Stencil;
+        ClearValue.Format = ResourceDesc.Format;
+    }
+
     D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATE_COMMON;
 
     ResultCode Result = D3D12MemoryManager::GetMemoryPool(MemType)->AllocateResource(m_Device, 
         ResourceDesc, InitialState, 
-        ResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ? nullptr : &ClearValue, 
+        PClearValue ? &ClearValue : nullptr, 
         &PResource);
 
     if (Result == SResult_OK) 

@@ -20,6 +20,9 @@ typedef unsigned int U32;
 typedef long long I64;
 typedef unsigned long long U64;
 
+typedef float R32;
+typedef double R64;
+
 typedef size_t SIZE;
 typedef I32 B32;
 typedef I64 B64;

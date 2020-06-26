@@ -92,18 +92,13 @@ ResultCode MemoryPool::AllocateResource(ID3D12Device* PDevice,
                                         const D3D12_CLEAR_VALUE* ClearValue,
                                         ID3D12Resource** PPResource)
 {
-    // Allocate based on Total Size requested in resource description info.
-    U64 TotalDimensionSize = Desc.Width * Desc.Height * Desc.DepthOrArraySize * Desc.MipLevels;
-    // We also need our pixel depth/width of the format it will be created with.
-    U64 FormatSizeInBytes = static_cast<U64>(GetBitsForPixelFormat(Desc.Format));
-    U64 SampleCount = Desc.SampleDesc.Count;
-    U64 TotalSizeInBytes = TotalDimensionSize * FormatSizeInBytes * SampleCount;
-    static const U64 FormatChannelAlignmentBytes = MEM_1KB * MEM_BYTES(64);
+    D3D12_RESOURCE_ALLOCATION_INFO AllocationInfo = { 0ULL, 0ULL };
+    D3D12MemoryManager::GetCachedResourceSize(PDevice, Desc, &AllocationInfo);
 
     if (m_Allocator)
     {
         AllocationBlock Block = { };
-        if (!m_Allocator->Allocate(&Block, TotalSizeInBytes, FormatChannelAlignmentBytes))
+        if (!m_Allocator->Allocate(&Block, AllocationInfo.SizeInBytes, AllocationInfo.Alignment))
         {
             return SResult_MEMORY_ALLOCATION_FAILURE;
         }
@@ -212,6 +207,59 @@ ResultCode D3D12MemoryManager::UpdateResourceState(GPUHandle Key, D3D12_RESOURCE
         return SResult_OBJECT_NOT_FOUND;
     }
     ResourceCache[Key].State = State;
+    return SResult_OK;
+}
+
+
+ResultCode D3D12MemoryManager::GetCachedResourceSize(ID3D12Device* PDevice, 
+                                                     D3D12_RESOURCE_DESC& Desc,
+                                                     D3D12_RESOURCE_ALLOCATION_INFO* Out)
+{
+    // Allocate based on Total Size requested in resource description info.
+    U64 TotalDimensionSize = Desc.Width * Desc.Height * Desc.DepthOrArraySize * Desc.MipLevels;
+    // We also need our pixel depth/width of the format it will be created with.
+    U64 FormatSizeInBytes = static_cast<U64>(GetBitsForPixelFormat(Desc.Format));
+    U64 SampleCount = Desc.SampleDesc.Count;
+    U64 TotalSizeInBytes = TotalDimensionSize * FormatSizeInBytes * SampleCount;
+    Out->SizeInBytes = TotalSizeInBytes;
+
+    // Alignments on devices are constant in D3D12, which is quite nice. 
+    // In Vulkan, this wouldn't be the case, and we would require querying from 
+    // vkGetBufferMemoryRequirements/vkGetImageMemoryRequirements.
+    switch (Desc.Dimension)
+    {
+        case D3D12_RESOURCE_DIMENSION_BUFFER:
+            Out->Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+            break;
+        case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+        {
+            if (Desc.SampleDesc.Count > 1)
+            {
+                if (TotalSizeInBytes <= D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT)
+                {
+                    Out->Alignment = D3D12_SMALL_MSAA_RESOURCE_PLACEMENT_ALIGNMENT;
+                }
+                else
+                {
+                    Out->Alignment = D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT;
+                }
+            }
+            else
+            {
+                if (TotalSizeInBytes <= D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT)
+                {
+                    Out->Alignment = D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
+                } 
+                else 
+                {
+                    Out->Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+                }
+            }
+            break;
+        }
+    }
     return SResult_OK;
 }
 } // Synthe
