@@ -124,11 +124,32 @@ int main(int c, char* argv[])
     PDevice->DestroyResource(ResourceHandle);
 
     U64 MemoryBytes = PDevice->GetCurrentUsedMemoryBytesInPool(MemoryType_TEXTURE) / MEM_1MB;
+    GraphicsCommandList* CmdList = nullptr;
+    {
+        CommandListCreateInfo CmdCi = { };
+        CmdCi.Level = CommandListLevel_PRIMARY;
+        CmdCi.Type = CommandListType_GRAPHICS;
+        CmdCi.Flags = 0;
+        PDevice->CreateCommandList(CmdCi, &CmdList);
+    }
+
+    CommandListSubmitInfo CmdSi = { };
+    CmdSi.NumCommandLists = 1;
+    CmdSi.PCmdLists = &CmdList;
+    CmdSi.QueueToSubmit = SubmitQueue_GRAPHICS;
 
     while (!PWindow->GetShouldClose()) 
     {
         PollEvents();
+
+        PDevice->Begin();
+
+        CmdList->Begin();
+        CmdList->End();
+
+        PDevice->SubmitCommandLists(1, &CmdSi);
         PDevice->Present();
+        PDevice->End();
     }
 
     PDevice->CleanUp();    

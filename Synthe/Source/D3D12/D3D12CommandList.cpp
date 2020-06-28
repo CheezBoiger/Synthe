@@ -25,6 +25,9 @@ ResultCode D3D12GraphicsCommandList::Initialize(ID3D12Device* PDevice,
         {
             return SResult_FAILED;
         }
+        m_CommandLists[Idx].PCmdList->Close();
+        m_CommandLists[Idx].State = CommandState_READY;
+        m_CommandLists[Idx].PAllocatorRef = CommandAllocators[Idx];
     }
     return SResult_OK;
 }
@@ -40,19 +43,17 @@ void D3D12GraphicsCommandList::Release()
 }
 
 
-void D3D12GraphicsCommandList::Reset()
+void D3D12GraphicsCommandList::End()
 {
-    m_ShouldReset = true;
+    m_CommandLists[m_CurrentRecordingIdx].PCmdList->Close();
+    m_CommandLists[m_CurrentRecordingIdx].State = CommandState_READY;
 }
 
 
-void D3D12GraphicsCommandList::CheckShouldReset(ID3D12CommandAllocator* CommandAllocator)
-{  
-    CommandListState& State = m_CommandLists[m_CurrentRecordingIdx];
-    if (m_ShouldReset)
-    {
-        State.PCmdList->Reset(CommandAllocator, nullptr);
-    }
-    m_ShouldReset = false;
+void D3D12GraphicsCommandList::Begin()
+{
+    m_CommandLists[m_CurrentRecordingIdx].PCmdList->Reset(
+        m_CommandLists[m_CurrentRecordingIdx].PAllocatorRef, nullptr);
+    m_CommandLists[m_CurrentRecordingIdx].State = CommandState_STILL_RECORDING;
 }
 } // Synthe

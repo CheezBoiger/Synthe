@@ -303,15 +303,21 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
 
     InitializeMemoryHeaps(m_Device);
     InitializeDescriptorHeaps(m_Device, SwapchainConfig.Buffering);    
-    CreateBackbufferQueue();
+    CreateGraphicsQueue();
+    CreateAsyncQueue();
+    CreateCopyQueue();
     // Initialize our swapchain.
-    m_Swapchain.Initialize(SwapchainConfig, m_BackbufferQueue, PFactory);
+    m_Swapchain.Initialize(SwapchainConfig, m_GraphicsQueue, PFactory);
     // Initialize RTVs for swapchain.
     m_Swapchain.BuildRTVs(m_Device, D3D12DescriptorManager::GetDescriptorPool(DescriptorType_RTV));
 
     QueryBufferingResources(SwapchainConfig.Buffering);
 
     m_PFactory = PFactory;
+
+    // Wait on GPU.
+    WaitOnGPU();
+
     return SResult_OK;
 }
 
@@ -319,16 +325,19 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
 void D3D12GraphicsDevice::SubmitCommandListsToBackBuffer(ID3D12CommandList* const* PPCommandLists, U32 Count, U32 FrameIndex)
 {
     BufferingResource& Buffer = m_BufferingResources[FrameIndex % m_BufferingResources.size()];
-    m_BackbufferQueue->Wait(Buffer.PWaitFence, Buffer.FenceSignalValue);
-    m_BackbufferQueue->ExecuteCommandLists(Count, PPCommandLists);
-    U32 FenceNewValue = Buffer.FenceSignalValue++;
-    m_BackbufferQueue->Signal(Buffer.PSignalFence, FenceNewValue);
+    m_GraphicsQueue->ExecuteCommandLists(Count, PPCommandLists);
 }
 
 
 ResultCode D3D12GraphicsDevice::CleanUp()
 {
     m_Swapchain.CleanUp();
+    if (m_GraphicsQueue)
+        m_GraphicsQueue->Release();
+    if (m_AsyncQueue)
+        m_AsyncQueue->Release();
+    if (m_CopyQueue)
+        m_CopyQueue->Release();
     if (m_PFactory)
         m_PFactory->Release();
     if (m_Device)
@@ -339,14 +348,14 @@ ResultCode D3D12GraphicsDevice::CleanUp()
 }
 
 
-ResultCode D3D12GraphicsDevice::CreateBackbufferQueue()
+ResultCode D3D12GraphicsDevice::CreateGraphicsQueue()
 {
     D3D12_COMMAND_QUEUE_DESC Desc = { };
     Desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     Desc.NodeMask = 0;
-    Desc.Priority = 0;
+    Desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH;
     Desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    HRESULT HR = m_Device->CreateCommandQueue(&Desc, __uuidof(ID3D12CommandQueue), (void**)&m_BackbufferQueue);
+    HRESULT HR = m_Device->CreateCommandQueue(&Desc, __uuidof(ID3D12CommandQueue), (void**)&m_GraphicsQueue);
     if (FAILED(HR)) 
         return GResult_DEVICE_CREATION_FAILURE;
     return SResult_OK;
@@ -355,13 +364,10 @@ ResultCode D3D12GraphicsDevice::CreateBackbufferQueue()
 
 void D3D12GraphicsDevice::CleanUpBufferingResources()
 {
-    m_BackBufferCommandList.Release();
     for (U32 I = 0; I < m_BufferingResources.size(); ++I) 
     {
         BufferingResource& Buffer = m_BufferingResources[I];
         Buffer.PWaitFence->Release();
-        Buffer.PSignalFence->Release();
-        CloseHandle(Buffer.FenceEventSignal);
         CloseHandle(Buffer.FenceEventWait);
         Buffer.PCommandAllocator->Release();
     }  
@@ -372,22 +378,17 @@ void D3D12GraphicsDevice::QueryBufferingResources(U32 BufferingCount)
 {
     CleanUpBufferingResources();
     m_BufferingResources.resize(BufferingCount);
-    std::vector<ID3D12CommandAllocator*> PPerBufferAllocators(BufferingCount);
     for (U32 I = 0; I < m_BufferingResources.size(); ++I)
     {
         BufferingResource& Buffer = m_BufferingResources[I];
         
-        Buffer.FenceEventSignal = CreateEvent(NULL, FALSE, FALSE, NULL);
         Buffer.FenceEventWait = CreateEvent(NULL, FALSE, FALSE, NULL);
-    
+        
         HRESULT Result = 0; 
-        m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PSignalFence);
         m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PWaitFence);
         m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&Buffer.PCommandAllocator);
-        PPerBufferAllocators[I] = Buffer.PCommandAllocator;
+        Buffer.FenceWaitValue = 1ULL;
     }
-    m_BackBufferCommandList.Initialize(m_Device, BufferingCount, PPerBufferAllocators.data(), 
-        D3D12_COMMAND_LIST_TYPE_DIRECT);
 }
 
 
@@ -420,24 +421,40 @@ ResultCode D3D12GraphicsDevice::Present()
 
 
 void D3D12GraphicsDevice::Begin()
-{    
-    // Next frame to work on.
-    m_BufferIndex = m_Swapchain.GetNextFrameIndex() % static_cast<U32>(m_BufferingResources.size());
-
+{
     BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
     Buffer.PCommandAllocator->Reset();
 
-    // Submit to next buffer index.
-    m_BackBufferCommandList.SetCurrentIdx(m_BufferIndex);
-    m_BackBufferCommandList.Reset();
+    // Update our per frame command lists.
+    for (auto* PCommandList : m_PerFrameCommandLists)
+    {
+        PCommandList->SetCurrentIdx(m_BufferIndex);
+    }
 }
 
 
 void D3D12GraphicsDevice::End()
 {
     BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
-    m_BackbufferQueue->Signal(Buffer.PSignalFence, Buffer.FenceSignalValue);
-    
+    m_GraphicsQueue->Signal(Buffer.PWaitFence, Buffer.FenceWaitValue);
+    // Next frame to work on.
+    m_BufferIndex = m_Swapchain.GetNextFrameIndex() % static_cast<U32>(m_BufferingResources.size());
+    if (Buffer.PWaitFence->GetCompletedValue() < Buffer.FenceWaitValue)
+    {
+        Buffer.PWaitFence->SetEventOnCompletion(Buffer.FenceWaitValue, Buffer.FenceEventWait);
+        WaitForSingleObject(Buffer.FenceEventWait, INFINITE);
+    }
+    Buffer.FenceWaitValue += 1;
+}
+
+
+void D3D12GraphicsDevice::WaitOnGPU()
+{
+    BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
+    m_GraphicsQueue->Signal(Buffer.PWaitFence, Buffer.FenceWaitValue);
+    Buffer.PWaitFence->SetEventOnCompletion(Buffer.FenceWaitValue, Buffer.FenceEventWait);
+    WaitForSingleObject(Buffer.FenceEventWait, INFINITE);
+    Buffer.FenceWaitValue += 1;
 }
 
 
@@ -509,5 +526,134 @@ ResultCode D3D12GraphicsDevice::CreateResource(GPUHandle* Out,
     }
 
     return Result;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateCommandList(CommandListCreateInfo& Info, GraphicsCommandList** PList)
+{
+    ResultCode Code = SResult_OK;
+    D3D12_COMMAND_LIST_TYPE CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    switch (Info.Type)
+    {
+        case CommandListType_COPY:
+            CommandListType = D3D12_COMMAND_LIST_TYPE_COPY;
+            break;
+        case CommandListType_COMPUTE:
+            CommandListType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            break;
+        case CommandListType_GRAPHICS:
+        default:
+            CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            break;
+    }
+
+    if (Info.Level == CommandListLevel_SECONDARY)
+    {
+        CommandListType = D3D12_COMMAND_LIST_TYPE_BUNDLE;
+    }
+
+    if (Info.Flags & CommandListFlag_RARELY_UPDATE) 
+    {
+    }
+    else
+    {
+        D3D12GraphicsCommandList* D3DCommandList = new D3D12GraphicsCommandList();
+        // We need to update for each command list.
+        std::vector<ID3D12CommandAllocator*> Allocators(m_BufferingResources.size());
+        for (U32 I = 0; I < m_BufferingResources.size(); ++I)
+        {
+            Allocators[I] = m_BufferingResources[I].PCommandAllocator;
+        }
+        U32 NumBuffers = static_cast<U32>(m_BufferingResources.size());
+        Code = D3DCommandList->Initialize(m_Device, NumBuffers, Allocators.data(), CommandListType);
+        if (Code == SResult_OK)
+        {
+            m_PerFrameCommandLists.push_back(D3DCommandList);
+            *PList = m_PerFrameCommandLists.back();
+        } 
+        else 
+        {
+            delete D3DCommandList;
+        }
+    }
+    
+    return Code;
+}
+
+
+ResultCode D3D12GraphicsDevice::SubmitCommandLists(U32 NumSubmits,
+                                                   const CommandListSubmitInfo* PSubmitInfos)
+{
+    static ID3D12CommandList* CmdListBuffer[32];
+    ResultCode Code = SResult_OK;
+
+    for (U32 I = 0; I < NumSubmits; ++I)
+    {
+        ID3D12CommandQueue* Queue = nullptr;
+        const CommandListSubmitInfo& Info = PSubmitInfos[I];
+        switch (Info.QueueToSubmit)
+        {
+            case SubmitQueue_ASYNC:
+                Queue = m_AsyncQueue;
+                break;
+            case SubmitQueue_COPY:
+                Queue = m_CopyQueue;
+                break;
+            case SubmitQueue_GRAPHICS:
+            default:
+                Queue = m_GraphicsQueue;
+                break;
+        } 
+        for (U32 CmdIdx = 0; CmdIdx < Info.NumCommandLists; ++CmdIdx)
+        {
+            CmdListBuffer[CmdIdx] = static_cast<D3D12GraphicsCommandList*>(
+                Info.PCmdLists[CmdIdx])->GetNative();
+        }
+        Queue->ExecuteCommandLists(Info.NumCommandLists, CmdListBuffer);
+    }
+
+    return Code;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateAsyncQueue()
+{
+    D3D12_COMMAND_QUEUE_DESC Desc = { };
+    Desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    Desc.NodeMask = 0;
+    Desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    Desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    HRESULT Result = m_Device->CreateCommandQueue(&Desc, __uuidof(ID3D12CommandQueue), (void**)&m_AsyncQueue);
+    if (FAILED(Result))
+    {
+        return SResult_FAILED;
+    }
+    return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateCopyQueue()
+{
+    D3D12_COMMAND_QUEUE_DESC Desc = { };
+    Desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    Desc.NodeMask = 0;
+    Desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    Desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    HRESULT Result = m_Device->CreateCommandQueue(&Desc, __uuidof(ID3D12CommandQueue), (void**)&m_CopyQueue);
+    if (FAILED(Result))
+    {
+        return SResult_FAILED;
+    }
+    return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::DestroyCommandLists(U32 NumCommandLists, GraphicsCommandList** CommandLists)
+{
+    for (U32 I = 0; I < NumCommandLists; ++I)
+    {
+        D3D12GraphicsCommandList* CmdListD3D;
+    }
+    return SResult_OK;
 }
 } // Synthe

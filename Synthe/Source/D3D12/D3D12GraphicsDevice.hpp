@@ -11,6 +11,7 @@
 #include "D3D12Swapchain.hpp"
 #include "D3D12CommandList.hpp"
 
+#include <list>
 
 namespace Synthe {
 
@@ -37,11 +38,8 @@ struct BufferingResource
 {
     ID3D12CommandAllocator* PCommandAllocator;
     ID3D12Fence* PWaitFence;
-    ID3D12Fence* PSignalFence;
     HANDLE FenceEventWait;
-    HANDLE FenceEventSignal;
-    U32 FenceSignalValue;
-    U32 FenceWaitValue;
+    U64 FenceWaitValue;
 };
 
 
@@ -54,7 +52,7 @@ public:
         , m_Device(nullptr)
         , m_Adapter(nullptr)
         , m_BufferIndex(0ULL)
-        , m_BackbufferQueue(nullptr)
+        , m_GraphicsQueue(nullptr)
 #if DIRECTML_COMPATIBLE
         , m_MLDevice(nullptr)
 #endif 
@@ -73,8 +71,8 @@ public:
     //! \return The current buffer index that corresponds to in flight frames.
     U32 GetCurrentBufferIndex() const { return m_BufferIndex; }
 
-    //! The back buffer queue that corresponds to the back buffers.
-    ID3D12CommandQueue* GetBackBufferQueue() { return m_BackbufferQueue; }
+    //! Get the graphics queue.
+    ID3D12CommandQueue* GetGraphicsQueue() { return m_GraphicsQueue; }
 
     //! Submit call to present the final back buffer to window.
     ResultCode Present() override;
@@ -89,11 +87,35 @@ public:
     U64 GetCurrentUsedMemoryBytesInPool(U64 Key) override;
     U64 GetTotalSizeMemoryBytesForPool(U64 Key) override;
 
+    //! Submit command lists.
+    ResultCode SubmitCommandLists(U32 NumSubmits, 
+                                  const CommandListSubmitInfo* PSubmitInfos) override;
+
+    ResultCode CreateCommandList(CommandListCreateInfo& Info, 
+                                 GraphicsCommandList** PList) override;
+
+    //! Begin the frame. This will prepare resources, along with prepare command lists and 
+    //! other buffering resources.
     void Begin() override;
+
+    //! End the current frame. This will submit a signal to the graphics queue, as well as 
+    //! move to the next frame, so be sure to call Present() before calling End().
     void End() override;
+
+    //! Wait for the graphics accelerator.
+    void WaitOnGPU();
+
+    ResultCode DestroyCommandLists(U32 NumCommandLists, GraphicsCommandList** CommandLists) override;
+
 private:
     //! Creates the back buffer queue.
-    ResultCode CreateBackbufferQueue();
+    ResultCode CreateGraphicsQueue();
+
+    //! Creates the asynchronous queue.
+    ResultCode CreateAsyncQueue();
+
+    //! Creates the copy queue.
+    ResultCode CreateCopyQueue();
 
     //! Cleans up buffering resources.
     void CleanUpBufferingResources();
@@ -101,14 +123,27 @@ private:
     //! Queries for frame in flight buffers.
     void QueryBufferingResources(U32 BufferingCount);
     
+    //! Release the asynchronous queue.
+    void ReleaseAsyncQueue();
+    
+    //! Release the copy queue.
+    void ReleaseCopyQueue();
+
     //! Our buffering resources.
     std::vector<BufferingResource>      m_BufferingResources;
 
     //! 
-    ID3D12CommandQueue*                 m_BackbufferQueue;
-    D3D12GraphicsCommandList            m_BackBufferCommandList;
+    ID3D12CommandQueue*                 m_GraphicsQueue;
+    
+    //! Asynchronous queue should any be available.
+    ID3D12CommandQueue*                 m_AsyncQueue;
+
+    //! Copy queue should any be available.
+    ID3D12CommandQueue*                 m_CopyQueue;
 
     U32                                 m_BufferIndex;
+
+    std::list<D3D12GraphicsCommandList*> m_PerFrameCommandLists;
 
     ID3D12Device*                       m_Device;
     IDXGIFactory2*                      m_PFactory;

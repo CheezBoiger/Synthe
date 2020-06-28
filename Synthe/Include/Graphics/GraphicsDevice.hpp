@@ -57,6 +57,31 @@ struct CommandListCreateInfo
     CommandListType Type;
     //! Mainly whether this Commandlist is a primary, or bundle.
     CommandListLevel Level;
+    //! Command List creation flags used to indicate what the behavior of the 
+    //! command list will be.
+    CommandListFlags Flags;
+};
+
+
+enum SubmitQueue
+{
+    //! Submit to Graphics queue.
+    SubmitQueue_GRAPHICS,
+    //! Submit to Asynchronous queue.
+    SubmitQueue_ASYNC,
+    //! Submit to copy queue.
+    SubmitQueue_COPY
+};
+
+
+struct CommandListSubmitInfo
+{
+    //! Number of command lists to submit.
+    U32 NumCommandLists;
+    //! Array of command lists corresponding to NumCommandLists. 
+    GraphicsCommandList** PCmdLists;
+    //! The Queue type to submit our commandlists to.
+    SubmitQueue QueueToSubmit;
 };
 
 
@@ -114,9 +139,11 @@ public:
     virtual ResultCode CreateConstantBufferView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
     virtual ResultCode CreateRenderTargetView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
     virtual ResultCode CreateUnorderedAccessView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateFence(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
 
     virtual ResultCode DestroyResource(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
     virtual ResultCode DestroyShaderResourceView(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode DestroyFence(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
 
     //! Get this current device's features. GraphicsDevice must be initialized, before calling this
     //! getter.
@@ -138,8 +165,21 @@ public:
     virtual U64 GetCurrentUsedMemoryBytesInPool(U64 Key) { return 0ULL; }
     virtual U64 GetTotalSizeMemoryBytesForPool(U64 Key) { return 0ULL; }
 
-    virtual ResultCode CreateCommandList(CommandListCreateInfo& Info, GraphicsCommandList* PCmdList) { return SResult_NOT_IMPLEMENTED; }
-    virtual ResultCode SubmitCommandLists() { return SResult_NOT_IMPLEMENTED; }
+    //! Create a command list for the application to use.
+    //!
+    //! \param Info
+    //! \param PCmdList
+    //! \return SResult_OK if the creation of the command list was a success.
+    virtual ResultCode CreateCommandList(CommandListCreateInfo& Info, 
+                                         GraphicsCommandList** PCmdList) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Submit CommandLists.
+    virtual ResultCode SubmitCommandLists(U32 NumSubmits, 
+                                          const CommandListSubmitInfo* PSubmitInfos) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Destroy command lists.
+    virtual ResultCode DestroyCommandLists(U32 NumCommandLists, 
+                                           GraphicsCommandList** CommandList) { return SResult_NOT_IMPLEMENTED; }
 
 protected:  
     GraphicsDeviceFeatures m_Features;

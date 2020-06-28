@@ -23,14 +23,27 @@ enum CommandListLevel
 enum CommandListType
 {
     CommandListType_GRAPHICS,
-    CommandListType_COMPUTE
+    CommandListType_COMPUTE,
+    CommandListType_COPY
 };
+
+
+enum CommandListFlag
+{
+    //! Command List default flag.
+    CommandListFlag_NONE = 0,
+    //! Command List to be used only once.
+    CommandListFlag_ONE_TIME_SUBMIT = (1 << 0),
+    //! Commandlist to be recorded very few times.
+    CommandListFlag_RARELY_UPDATE = (1 << 1)
+};
+
+
+typedef U32 CommandListFlags;
 
 
 //! Command list structure for graphics processing unit.
 class GraphicsCommandList {
-protected:
-    B32 m_IsRecording;
 public:
 
     virtual ~GraphicsCommandList() { }
@@ -38,11 +51,11 @@ public:
     //! Begin the command list recording. This must be called before any draw, copy, compute, or state
     //! command is called.
     //!
-    void Begin() { m_IsRecording = true; }
+    virtual void Begin() { }
 
     //! End the command list recording. This must be called after every Begin() function.
     //! 
-    void End() { m_IsRecording = false; }
+    virtual void End() { }
 
     //! Draws call that records an indexed draw (ordered vertex buffer.)
     //!
@@ -84,8 +97,5 @@ public:
 
     //! Copy a Resource to another Resource.
     virtual void CopyResource(Resource* PDest, Resource* PSrc) { }
-
-    //! Resets the command list.
-    virtual void Reset() { }
 };
 } // Synth

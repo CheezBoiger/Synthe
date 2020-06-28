@@ -12,24 +12,25 @@
 namespace Synthe {
 
 
-enum CommandResult
+enum CommandState
 {
-    CommandResult_STILL_RECORDING,
-    CommandResult_STILL_EXECUTING,
+    CommandState_READY = 0,
+    CommandState_STILL_RECORDING,
+    CommandState_STILL_EXECUTING,
 };
-
 
 class D3D12GraphicsCommandList : public GraphicsCommandList
 {
 private:
     struct CommandListState 
     {
+        ID3D12CommandAllocator* PAllocatorRef;
         ID3D12GraphicsCommandList* PCmdList;
+        CommandState State;
     };
 public:
     D3D12GraphicsCommandList()
         : m_CommandLists(0)
-        , m_ShouldReset(false)
         , m_CurrentRecordingIdx(0) { }
 
     ResultCode Initialize(ID3D12Device* PDevice, 
@@ -38,16 +39,14 @@ public:
                           D3D12_COMMAND_LIST_TYPE Type);
 
     void Release();
-    void Reset() override;
+    void Begin() override;
+    void End() override;
 
-    ID3D12GraphicsCommandList* GetNative(U32 Idx = 0) { return m_CommandLists[Idx].PCmdList; }
-
-    void CheckShouldReset(ID3D12CommandAllocator* CommandAllocator);
+    ID3D12GraphicsCommandList* GetNative() { return m_CommandLists[m_CurrentRecordingIdx].PCmdList; }
     void SetCurrentIdx(U32 Idx) { m_CurrentRecordingIdx = Idx; }
 
 private:
     std::vector<CommandListState> m_CommandLists;
-    B32 m_ShouldReset;
     U32 m_CurrentRecordingIdx;
 };
 } // Synthe 
