@@ -72,7 +72,7 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
     }
 }
 
-DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format)
+DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::PixelFormat Format)
 {
     switch (Format)
     {
@@ -98,4 +98,14 @@ D3D12_RESOURCE_DIMENSION GetResourceDimension(Synthe::ResourceDimension Dimensio
         default:
             return D3D12_RESOURCE_DIMENSION_UNKNOWN;
     }
+}
+
+
+
+Synthe::GPUHandle KGPUHandleAssign = 0ULL;
+
+
+Synthe::GPUHandle GenerateNewHandle()
+{
+    return ++KGPUHandleAssign; 
 }

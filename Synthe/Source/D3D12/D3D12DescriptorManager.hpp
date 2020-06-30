@@ -271,6 +271,13 @@ public:
     //! \return GResult_OK if the descriptor pools at location Key were successfully destroyed.
     static ResultCode DestroyDescriptorPoolsAtKey(DescriptorKeyID Key);
 
+    //! 
+    static ResultCode CacheDescriptorToResource(GPUHandle Descriptor, GPUHandle Resource);
 
+    //!
+    static ResultCode GetCachedResourceWithDescriptor(GPUHandle Descriptor, GPUHandle* Resource);
+
+    //!
+    static ResultCode RemoveCachedDescriptorToResource(GPUHandle Descriptor);
 };
 } // Synthe 

@@ -74,13 +74,19 @@ public:
     virtual void SetComputePipelineState() { }
 
     //! Set viewports for the corresponding pass.
-    virtual void SetViewports() { }
+    virtual void SetViewports(U32 NumViewports) { }
 
     //! Set the scissors for the corresponding pass.
-    virtual void SetScissors() { }
+    virtual void SetScissors(U32 NumScissors) { }
 
     //! Set the render target views that will be used.
-    virtual void SetRenderTargets(U32 NumRTVs) { }
+    virtual void SetRenderTargets(U32 NumRTVs, GPUHandle* RTVHandles, GPUHandle* DepthStencil) { }
+
+    //! Clear a render target.
+    virtual void ClearRenderTarget(GPUHandle RTV, 
+                                   ClearColorValue* ClearColor, 
+                                   U32 NumBounds, 
+                                   TargetBounds* Bounds) { }
 
     //! Set the descriptor sets that correspond to the data resources that will be used by the render pass
     //! state.

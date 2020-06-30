@@ -9,15 +9,6 @@
 namespace Synthe {
 
 
-GPUHandle KGPUHandleAssign = 0ULL;
-
-
-GPUHandle GenerateNewHandle()
-{
-    return ++KGPUHandleAssign; 
-}
-
-
 GraphicsDevice* CreateDeviceD3D12()
 {
     static D3D12GraphicsDevice Device;
@@ -371,6 +362,7 @@ void D3D12GraphicsDevice::CleanUpBufferingResources()
         CloseHandle(Buffer.FenceEventWait);
         Buffer.PCommandAllocator->Release();
     }  
+    m_BackbufferCommandList.Release();
 }
 
 
@@ -378,6 +370,7 @@ void D3D12GraphicsDevice::QueryBufferingResources(U32 BufferingCount)
 {
     CleanUpBufferingResources();
     m_BufferingResources.resize(BufferingCount);
+    std::vector<ID3D12CommandAllocator*> Allocators(BufferingCount);
     for (U32 I = 0; I < m_BufferingResources.size(); ++I)
     {
         BufferingResource& Buffer = m_BufferingResources[I];
@@ -388,7 +381,9 @@ void D3D12GraphicsDevice::QueryBufferingResources(U32 BufferingCount)
         m_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&Buffer.PWaitFence);
         m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&Buffer.PCommandAllocator);
         Buffer.FenceWaitValue = 1ULL;
+        Allocators[I] = Buffer.PCommandAllocator;
     }
+    m_BackbufferCommandList.Initialize(m_Device, BufferingCount, Allocators.data(), D3D12_COMMAND_LIST_TYPE_DIRECT);
 }
 
 
@@ -416,6 +411,19 @@ U64 D3D12GraphicsDevice::GetTotalSizeMemoryBytesForPool(U64 Key)
 
 ResultCode D3D12GraphicsDevice::Present()
 {
+    const FrameResource& Frame = m_Swapchain.GetFrameResource(m_Swapchain.GetCurrentFrameIndex());
+    ResourceState ResourceS;
+    D3D12MemoryManager::GetNativeResource(Frame.ResourceHandle, &ResourceS);
+    if (ResourceS.State != D3D12_RESOURCE_STATE_PRESENT)
+    {
+        m_BackbufferCommandList.Begin();
+            D3D12_RESOURCE_STATES State = D3D12_RESOURCE_STATE_PRESENT;
+            m_BackbufferCommandList.TransitionResourceIfNeeded(1, (GPUHandle*)&Frame.ImageRTV.ptr, &State);
+        m_BackbufferCommandList.End();
+        D3D12MemoryManager::UpdateResourceState(Frame.ResourceHandle, D3D12_RESOURCE_STATE_PRESENT);
+        ID3D12CommandList* CmdList[] = { m_BackbufferCommandList.GetNative() };
+        m_GraphicsQueue->ExecuteCommandLists(1, CmdList);
+    }
     return m_Swapchain.Present();
 }
 
@@ -430,6 +438,8 @@ void D3D12GraphicsDevice::Begin()
     {
         PCommandList->SetCurrentIdx(m_BufferIndex);
     }
+    // Update our backbuffer commandlist too.
+    m_BackbufferCommandList.SetCurrentIdx(m_BufferIndex);
 }
 
 
@@ -438,7 +448,7 @@ void D3D12GraphicsDevice::End()
     BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
     m_GraphicsQueue->Signal(Buffer.PWaitFence, Buffer.FenceWaitValue);
     // Next frame to work on.
-    m_BufferIndex = m_Swapchain.GetNextFrameIndex() % static_cast<U32>(m_BufferingResources.size());
+    m_BufferIndex = m_Swapchain.GetCurrentFrameIndex() % static_cast<U32>(m_BufferingResources.size());
     if (Buffer.PWaitFence->GetCompletedValue() < Buffer.FenceWaitValue)
     {
         Buffer.PWaitFence->SetEventOnCompletion(Buffer.FenceWaitValue, Buffer.FenceEventWait);
@@ -652,8 +662,77 @@ ResultCode D3D12GraphicsDevice::DestroyCommandLists(U32 NumCommandLists, Graphic
 {
     for (U32 I = 0; I < NumCommandLists; ++I)
     {
-        D3D12GraphicsCommandList* CmdListD3D;
+        D3D12GraphicsCommandList* CmdListD3D = static_cast<D3D12GraphicsCommandList*>(CommandLists[I]);
+        CmdListD3D->Release();
+        // Find the command list in per frame, if the command list is dynamic.
     }
+    return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV,
+                                                       GPUHandle* OutHandle)
+{
+    D3D12_RENDER_TARGET_VIEW_DESC Desc = { };
+    Desc.Format = GetCommonFormatToDXGIFormat(RTV.Format);
+    switch (RTV.Dimension)
+    {
+        case RTVViewDimension_BUFFER:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_BUFFER;
+            Desc.Buffer.FirstElement = RTV.Buffer.FirstElement;
+            Desc.Buffer.NumElements = RTV.Buffer.NumElements;
+            break;
+        case RTVViewDimension_TEXTURE_1D:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+            Desc.Texture1D.MipSlice = RTV.Texture1D.MipSlice;
+            break;
+        case RTVViewDimension_TEXTURE_2D:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+            Desc.Texture2D.MipSlice = RTV.Texture2D.MipSlice;
+            Desc.Texture2D.PlaneSlice = RTV.Texture2D.PlaneSlice;
+            break;
+        case RTVViewDimension_TEXTURE_1D_ARRAY:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+            Desc.Texture1DArray.ArraySize = RTV.Texture1DArray.ArraySize;
+            Desc.Texture1DArray.FirstArraySlice = RTV.Texture1DArray.FirstArraySlice;
+            Desc.Texture1DArray.MipSlice = RTV.Texture1DArray.MipSlice;
+            break;
+        case RTVViewDimension_TEXTURE_2D_ARRAY:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+            Desc.Texture2DArray.ArraySize = RTV.Texture2DArray.ArraySize;
+            Desc.Texture2DArray.FirstArraySlice = RTV.Texture2DArray.FirstArraySlice;
+            Desc.Texture2DArray.MipSlice = RTV.Texture2DArray.MipSlice;
+            Desc.Texture2DArray.PlaneSlice = RTV.Texture2DArray.PlaneSlice;
+            break;
+        case RTVViewDimension_TEXTURE_2DMS_ARRAY:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+            Desc.Texture2DMSArray.ArraySize;
+            Desc.Texture2DMSArray.FirstArraySlice;
+            break;
+        case RTVViewDimension_TEXTURE_2DMS:
+            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+            Desc.Texture2DMS.UnusedField_NothingToDefine;
+            break;
+        case RTVViewDimension_TEXTURE_3D:
+            Desc.Texture3D.FirstWSlice = RTV.Texture3D.FirstWSlice;
+            Desc.Texture3D.MipSlice = RTV.Texture3D.MipSlice;
+            Desc.Texture3D.WSize = RTV.Texture3D.WSize;
+            break;
+        default:
+            // No proper dimension was set.
+            return SResult_INVALID_ARGS;
+    }
+    ResourceState ResourceStateO = { };
+    D3D12MemoryManager::GetNativeResource(RTV.ResourceHandle, &ResourceStateO);
+    if (!ResourceStateO.PResource)
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    // Just return the pointer as a gpu handle.
+    D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle = 
+        D3D12DescriptorManager::GetDescriptorPool(DescriptorType_RTV)->CreateRtv(
+            m_Device, Desc, ResourceStateO.PResource);
+    *OutHandle = RtvHandle.ptr;
     return SResult_OK;
 }
 } // Synthe

@@ -12,6 +12,9 @@
 namespace Synthe {
 
 
+class ResourceState;
+
+
 enum CommandState
 {
     CommandState_READY = 0,
@@ -31,7 +34,8 @@ private:
 public:
     D3D12GraphicsCommandList()
         : m_CommandLists(0)
-        , m_CurrentRecordingIdx(0) { }
+        , m_CurrentRecordingIdx(0)
+        , m_DeviceRef(nullptr) { }
 
     ResultCode Initialize(ID3D12Device* PDevice, 
                           U32 NumCommandListBuffers,
@@ -42,11 +46,23 @@ public:
     void Begin() override;
     void End() override;
 
+    void SetRenderTargets(U32 NumRTVs, GPUHandle* RTVHandles, GPUHandle* DepthStencil) override;
+    
+    void SetViewports(U32 NumViewports) override;
+
+    void ClearRenderTarget(GPUHandle RTV, 
+                           ClearColorValue* ClearColor, 
+                           U32 NumBounds, 
+                           TargetBounds* Bounds) override;
+
+    void TransitionResourceIfNeeded(U32 NumHandles, GPUHandle* Descriptors, D3D12_RESOURCE_STATES* NeededStates);
+
     ID3D12GraphicsCommandList* GetNative() { return m_CommandLists[m_CurrentRecordingIdx].PCmdList; }
     void SetCurrentIdx(U32 Idx) { m_CurrentRecordingIdx = Idx; }
 
 private:
-    std::vector<CommandListState> m_CommandLists;
-    U32 m_CurrentRecordingIdx;
+    std::vector<CommandListState>   m_CommandLists;
+    U32                             m_CurrentRecordingIdx;
+    ID3D12Device*                   m_DeviceRef;
 };
 } // Synthe 

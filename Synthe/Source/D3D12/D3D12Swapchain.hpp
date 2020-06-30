@@ -21,7 +21,10 @@ struct FrameResource
     
     //! The upload descriptor heaps to read from shadercode.
     D3D12_CPU_DESCRIPTOR_HANDLE ImageRTV;
-    
+
+    //! GPUHandle key.
+    GPUHandle ResourceHandle;
+
     //! Default constructor method for the Rtv Image.
     FrameResource(ID3D12Resource* PImage = nullptr) 
         : PSwapchainImage(PImage)
@@ -59,7 +62,7 @@ public:
     //! Get the next frame index, this should be called after presentation.
     //!
     //! \return The next frame index.
-    U32 GetNextFrameIndex();
+    U32 GetCurrentFrameIndex();
 
     //! Get the total number of allocated frames in this swapchain.
     //!
@@ -71,6 +74,11 @@ public:
     //! 
     //! \return SResult_OK if the present submit is sent, otherwise GResult_FAILED.
     ResultCode Present() override;
+
+    //! Get the current backbuffer gpu handle.
+    //!
+    //! \return The current backbuffer handle to the render target view.
+    GPUHandle GetCurrentBackBufferRTV() override;
 
 private:
     void CleanUpFrameResources();

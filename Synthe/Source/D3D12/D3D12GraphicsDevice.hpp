@@ -94,6 +94,9 @@ public:
     ResultCode CreateCommandList(CommandListCreateInfo& Info, 
                                  GraphicsCommandList** PList) override;
 
+    ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
+                                      GPUHandle* OutHandle) override;
+
     //! Begin the frame. This will prepare resources, along with prepare command lists and 
     //! other buffering resources.
     void Begin() override;
@@ -104,6 +107,11 @@ public:
 
     //! Wait for the graphics accelerator.
     void WaitOnGPU();
+
+    //! Get the DXGI swapchain.
+    //!
+    //! \return The swapchain object that is mapped to this device object.
+    Swapchain* GetSwapchain() override { return &m_Swapchain; }
 
     ResultCode DestroyCommandLists(U32 NumCommandLists, GraphicsCommandList** CommandLists) override;
 
@@ -144,6 +152,7 @@ private:
     U32                                 m_BufferIndex;
 
     std::list<D3D12GraphicsCommandList*> m_PerFrameCommandLists;
+    D3D12GraphicsCommandList           m_BackbufferCommandList;
 
     ID3D12Device*                       m_Device;
     IDXGIFactory2*                      m_PFactory;

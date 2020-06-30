@@ -262,4 +262,15 @@ ResultCode D3D12MemoryManager::GetCachedResourceSize(ID3D12Device* PDevice,
     }
     return SResult_OK;
 }
+
+
+ResultCode D3D12MemoryManager::RemoveCachedNatvieResource(GPUHandle Key)
+{
+    if (ResourceCache.find(Key) == ResourceCache.end())
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    ResourceCache.erase(Key);
+    return SResult_OK;
+}
 } // Synthe

@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include "Graphics/GraphicsDevice.hpp"
+#include "Graphics/Swapchain.hpp"
 #include "Common/Memory/LinearAllocator.hpp"
 
 #include "Display/Window.hpp"
@@ -143,12 +144,17 @@ int main(int c, char* argv[])
         PollEvents();
 
         PDevice->Begin();
+            GPUHandle BackbufferRTV = PDevice->GetSwapchain()->GetCurrentBackBufferRTV();
+            CmdList->Begin();
+                CmdList->SetRenderTargets(1, &BackbufferRTV, nullptr);
+                
+                ClearColorValue Clear = { 1.0f, 0.0f, 0.0f, 1.0f };
+                TargetBounds Bound = { 0, 0, 1920, 1080 };
+                CmdList->ClearRenderTarget(BackbufferRTV, &Clear, 1, &Bound);
+            CmdList->End();
 
-        CmdList->Begin();
-        CmdList->End();
-
-        PDevice->SubmitCommandLists(1, &CmdSi);
-        PDevice->Present();
+            PDevice->SubmitCommandLists(1, &CmdSi);
+            PDevice->Present();
         PDevice->End();
     }
 

@@ -12,6 +12,40 @@
 namespace Synthe {
 
 std::unordered_map<DescriptorKeyID, std::vector<DescriptorPool>> DescriptorPoolCache; 
+std::unordered_map<GPUHandle, GPUHandle> DescriptorToResource;
+
+
+ResultCode D3D12DescriptorManager::CacheDescriptorToResource(GPUHandle Descriptor, GPUHandle Resource)
+{
+    if (DescriptorToResource.find(Descriptor) != DescriptorToResource.end())
+    {
+        return SResult_ALREADY_EXISTS;
+    }
+    DescriptorToResource[Descriptor] = Resource;
+    return SResult_OK;
+}
+
+
+ResultCode D3D12DescriptorManager::GetCachedResourceWithDescriptor(GPUHandle Descriptor, GPUHandle* Resource)
+{
+    if (DescriptorToResource.find(Descriptor) == DescriptorToResource.end())
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    *Resource = DescriptorToResource[Descriptor];
+    return SResult_OK;
+}
+
+
+ResultCode D3D12DescriptorManager::RemoveCachedDescriptorToResource(GPUHandle Descriptor)
+{
+    if (DescriptorToResource.find(Descriptor) == DescriptorToResource.end())
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    DescriptorToResource.erase(Descriptor);
+    return SResult_OK;
+}
 
 
 ResultCode D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorKeyID Key, U32 NumPools)

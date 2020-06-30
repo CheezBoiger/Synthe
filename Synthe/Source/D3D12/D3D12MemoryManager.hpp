@@ -173,6 +173,10 @@ public:
     //! \return 
     static ResultCode UpdateResourceState(GPUHandle Key, D3D12_RESOURCE_STATES State);
     
+    //! Remove a resource.
+    //!
+    static ResultCode RemoveCachedNatvieResource(GPUHandle Key);
+
 protected:
     //! Our friends!
     friend class MemoryPool;

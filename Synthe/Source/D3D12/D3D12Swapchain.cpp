@@ -5,6 +5,7 @@
 #include "D3D12Swapchain.hpp"
 #include "D3D12DescriptorManager.hpp"
 #include "D3D12GraphicsDevice.hpp"
+#include "D3D12MemoryManager.hpp"
 
 namespace Synthe {
 
@@ -86,7 +87,7 @@ void D3D12Swapchain::CleanUp()
 }
 
 
-U32 D3D12Swapchain::GetNextFrameIndex()
+U32 D3D12Swapchain::GetCurrentFrameIndex()
 {
     U32 FrameIndex = static_cast<U32>(m_NativeHandle->GetCurrentBackBufferIndex());
     return FrameIndex;   
@@ -112,11 +113,9 @@ void D3D12Swapchain::QueryFrames(U32 ImageCount)
             // Failed.  
             continue;  
         }
-        D3D12_RENDER_TARGET_VIEW_DESC RtvInfo = { };
-        RtvInfo.Format = SwapchainDesc.Format;
-        RtvInfo.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        RtvInfo.Texture2D.MipSlice = 0;
-        RtvInfo.Texture2D.PlaneSlice = 0;
+        Frame.ResourceHandle = GenerateNewHandle();
+        D3D12MemoryManager::CacheNativeResource(Frame.ResourceHandle, 
+            Frame.PSwapchainImage, D3D12_RESOURCE_STATE_PRESENT);
     }
 }
 
@@ -126,6 +125,8 @@ void D3D12Swapchain::CleanUpFrameResources()
     for (U32 I = 0; I < m_FrameResources.size(); ++I)
     {
         m_FrameResources[I].PSwapchainImage = nullptr;
+        D3D12DescriptorManager::RemoveCachedDescriptorToResource(m_FrameResources[I].ImageRTV.ptr);
+        D3D12MemoryManager::RemoveCachedNatvieResource(m_FrameResources[I].ResourceHandle);
     }
 }
 
@@ -141,6 +142,7 @@ void D3D12Swapchain::BuildRTVs(ID3D12Device* PDevice, DescriptorPool* PPool)
         RtvDesc.Texture2D.MipSlice = 0;
         RtvDesc.Texture2D.PlaneSlice = 0;
         Frame.ImageRTV = PPool->CreateRtv(PDevice, RtvDesc, Frame.PSwapchainImage, Frame.ImageRTV);
+        D3D12DescriptorManager::CacheDescriptorToResource(Frame.ImageRTV.ptr, Frame.ResourceHandle);
     }
 }
 
@@ -153,5 +155,11 @@ ResultCode D3D12Swapchain::Present()
         return GResult_FAILED;
     }
     return SResult_OK;
+}
+
+
+GPUHandle D3D12Swapchain::GetCurrentBackBufferRTV()
+{
+    return m_FrameResources[GetCurrentFrameIndex()].ImageRTV.ptr;
 }
 } // Synthe 

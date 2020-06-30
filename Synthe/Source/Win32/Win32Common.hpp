@@ -47,7 +47,7 @@
 //!
 //! \param Format The common format defined by the application.
 //! \return The native DXGI format that corresponds to the common GFormat.
-DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::Format Format);
+DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::PixelFormat Format);
 
 //! Get the bit width, or pixel depth, of the input format. This should be the 
 //! total size of a pixel that is to be provided by the buffer/image using this
@@ -63,3 +63,6 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format);
 //! \param Dimension Common application dimension.
 //! \return The D3D12 resource dimension. This is the native resource dimension used by D3D12 runtime.
 D3D12_RESOURCE_DIMENSION GetResourceDimension(Synthe::ResourceDimension Dimension);
+
+//!
+Synthe::GPUHandle GenerateNewHandle();

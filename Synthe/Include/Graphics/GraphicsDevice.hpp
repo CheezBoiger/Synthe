@@ -11,6 +11,9 @@
 namespace Synthe {
 
 
+class Swapchain;
+
+
 //! Graphics device features, that are available from the device queried.
 //! Typically GraphicsDevice object will have this object filled.
 struct GraphicsDeviceFeatures
@@ -135,12 +138,36 @@ public:
                                       const ResourceCreateInfo* PCreateInfo, 
                                       const ClearValue* PClearValue) { return SResult_NOT_IMPLEMENTED; }
 
+    //! Create a shader resource view for a given resource.
     virtual ResultCode CreateShaderResourceView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a constant buffer view for a given resource.
     virtual ResultCode CreateConstantBufferView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
-    virtual ResultCode CreateRenderTargetView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a render target view handle for a given resource.
+    //! 
+    //! \param RTV
+    //! \param OutHandle
+    //! \return The result of the call. SResult_OK if the call was successfully executed, and OutHandle was 
+    //!         generated. False otherwise, and OutHandle will not be supplied.
+    virtual ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
+                                              GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a depth stencil view handle for a given resource.
+    //!
+    //! \param OutHandle
+    //! \return The resulf of the call. SResult_OK if the call was successfully executed, and OutHandle was
+    //!         generated. False otherwise, and OutHandle will not be supplied.
+    virtual ResultCode CreateDepthStencilView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create an unordered access view for a given resource.
+    //!
     virtual ResultCode CreateUnorderedAccessView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a fence object.
     virtual ResultCode CreateFence(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
 
+    //! 
     virtual ResultCode DestroyResource(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
     virtual ResultCode DestroyShaderResourceView(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
     virtual ResultCode DestroyFence(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
@@ -180,6 +207,11 @@ public:
     //! Destroy command lists.
     virtual ResultCode DestroyCommandLists(U32 NumCommandLists, 
                                            GraphicsCommandList** CommandList) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Get the swapchain for this device.
+    //!
+    //! \return The swapchain object that corresponds to this device.
+    virtual Swapchain* GetSwapchain() { return nullptr; }
 
 protected:  
     GraphicsDeviceFeatures m_Features;
