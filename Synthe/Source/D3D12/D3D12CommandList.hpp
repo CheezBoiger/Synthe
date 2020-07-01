@@ -12,7 +12,7 @@
 namespace Synthe {
 
 
-class ResourceState;
+struct ResourceState;
 
 
 enum CommandState
@@ -28,7 +28,7 @@ private:
     struct CommandListState 
     {
         ID3D12CommandAllocator* PAllocatorRef;
-        ID3D12GraphicsCommandList* PCmdList;
+        ID3D12GraphicsCommandList5* PCmdList;
         CommandState State;
     };
 public:

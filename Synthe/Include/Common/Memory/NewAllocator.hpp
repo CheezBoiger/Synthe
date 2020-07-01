@@ -8,7 +8,8 @@
 namespace Synthe {
 
 
-
+//! Default new allocator, this is an aligned allocator.
+//!
 class NewAllocator : public Allocator
 {
 public:

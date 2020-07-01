@@ -12,6 +12,7 @@ namespace Synthe {
 
 
 class Swapchain;
+class Fence;
 
 
 //! Graphics device features, that are available from the device queried.
@@ -77,14 +78,26 @@ enum SubmitQueue
 };
 
 
+//! Command List Submit information, which is used for queue execution behavior.
+//! Normally this info is a set of command lists that wait or signal given fences,
+//! although no fences need be used.
 struct CommandListSubmitInfo
 {
-    //! Number of command lists to submit.
-    U32 NumCommandLists;
     //! Array of command lists corresponding to NumCommandLists. 
     GraphicsCommandList** PCmdLists;
     //! The Queue type to submit our commandlists to.
     SubmitQueue QueueToSubmit;
+    //! Number of fences to wait for.
+    U32 NumWaitFences;
+    //! Fences to wait on, if no fence defined, automatically 
+    //! submitted. 
+    Fence** WaitFences;
+    //! Number of command lists to submit.
+    U32 NumCommandLists;
+    //! Number of Signal fences to signal.
+    U32 NumSignalFences;
+    //! Fences to signal.
+    Fence** SignalFences; 
 };
 
 
@@ -189,7 +202,13 @@ public:
     virtual U64 GetGPUHeapSizeInBytes() { return 0ULL; }
     virtual U64 GetCPUHeapSizeInBytes() { return 0ULL; }
 
+    //! Get the amount of memory in bytes currently occupied by a memory pool.
+    //!
+    //! \param Key
+    //! \return 
     virtual U64 GetCurrentUsedMemoryBytesInPool(U64 Key) { return 0ULL; }
+
+    //! Get the total size of the memory pool in bytes.
     virtual U64 GetTotalSizeMemoryBytesForPool(U64 Key) { return 0ULL; }
 
     //! Create a command list for the application to use.
@@ -212,6 +231,35 @@ public:
     //!
     //! \return The swapchain object that corresponds to this device.
     virtual Swapchain* GetSwapchain() { return nullptr; }
+
+    //! Create a graphics rasterization pipeline for use with rendering.
+    //!
+    //! \return SResult_OK if the call succeeds.
+    virtual ResultCode CreateGraphicsPipeline() { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a compute pipeline for use with rendering and other tasks.
+    //!
+    //! \return SResult if the call succeeds.
+    virtual ResultCode CreateComputePipeline() { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a hardware accelerated ray tracing pipeline for use with rendering.
+    //! Note that this only works on hardware with supported ray tracing features.
+    //!
+    //! \return 
+    virtual ResultCode CreateRayTracingPipeline() { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a Mesh shading pipeline for use with rendering. Note that this only works
+    //! on hardware with supported mesh shading features.
+    //!
+    //! \return 
+    virtual ResultCode CreateMeshPipeline() { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a gpu fence for use with syncronizing submits.
+    //! 
+    //! \param OutFence
+    //! \return SResult_OK if the call succeeds, and the fence is created. Any other code
+    //!         signals a failure, along with no value stored for fence.
+    virtual ResultCode CreateFence(Fence** OutFence) { return SResult_NOT_IMPLEMENTED; }
 
 protected:  
     GraphicsDeviceFeatures m_Features;

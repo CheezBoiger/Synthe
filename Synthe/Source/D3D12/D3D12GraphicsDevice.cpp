@@ -6,6 +6,8 @@
 #include "D3D12DescriptorManager.hpp"
 #include "D3D12MemoryManager.hpp"
 
+#include "D3D12Fence.hpp"
+
 namespace Synthe {
 
 
@@ -285,6 +287,7 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
 
     m_Device = BestDevice;
     m_Adapter = BestAdapter;
+    BestDevice->QueryInterface<ID3D12Device5>(&m_AdvDevice);
 
     m_Features.Vendor = BestInfo.Vendor;
     m_Features.SharedSystemMemory = BestInfo.SharedMemoryBytes;
@@ -323,6 +326,7 @@ void D3D12GraphicsDevice::SubmitCommandListsToBackBuffer(ID3D12CommandList* cons
 ResultCode D3D12GraphicsDevice::CleanUp()
 {
     m_Swapchain.CleanUp();
+    CleanUpFences();
     if (m_GraphicsQueue)
         m_GraphicsQueue->Release();
     if (m_AsyncQueue)
@@ -567,7 +571,7 @@ ResultCode D3D12GraphicsDevice::CreateCommandList(CommandListCreateInfo& Info, G
     }
     else
     {
-        D3D12GraphicsCommandList* D3DCommandList = new D3D12GraphicsCommandList();
+        D3D12GraphicsCommandList* D3DCommandList = Malloc<D3D12GraphicsCommandList>(D3D12GraphicsCommandList());
         // We need to update for each command list.
         std::vector<ID3D12CommandAllocator*> Allocators(m_BufferingResources.size());
         for (U32 I = 0; I < m_BufferingResources.size(); ++I)
@@ -583,7 +587,7 @@ ResultCode D3D12GraphicsDevice::CreateCommandList(CommandListCreateInfo& Info, G
         } 
         else 
         {
-            delete D3DCommandList;
+            Free<D3D12GraphicsCommandList>(D3DCommandList);
         }
     }
     
@@ -619,7 +623,18 @@ ResultCode D3D12GraphicsDevice::SubmitCommandLists(U32 NumSubmits,
             CmdListBuffer[CmdIdx] = static_cast<D3D12GraphicsCommandList*>(
                 Info.PCmdLists[CmdIdx])->GetNative();
         }
+        for (U32 I = 0; I < Info.NumWaitFences; ++I)
+        {
+            D3D12Fence* PFence = static_cast<D3D12Fence*>(Info.WaitFences[I]);
+            Queue->Wait(PFence->GetNativeFence(), PFence->GetCurrentValue());   
+        }
         Queue->ExecuteCommandLists(Info.NumCommandLists, CmdListBuffer);
+        for (U32 I = 0; I < Info.NumSignalFences; ++I)
+        {
+            D3D12Fence* PFence = static_cast<D3D12Fence*>(Info.SignalFences[I]);
+            PFence->SetValue(PFence->GetCurrentValue() + 1ULL);
+            Queue->Signal(PFence->GetNativeFence(), PFence->GetCurrentValue());
+        }
     }
 
     return Code;
@@ -734,5 +749,35 @@ ResultCode D3D12GraphicsDevice::CreateRenderTargetView(const RenderTargetViewCre
             m_Device, Desc, ResourceStateO.PResource);
     *OutHandle = RtvHandle.ptr;
     return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateFence(Fence** OutFence)
+{
+    D3D12Fence* PFence = Malloc<D3D12Fence>();
+    ResultCode Result = PFence->Initialize(m_Device, D3D12_FENCE_FLAG_NONE);
+    if (Result == SResult_OK)
+    {
+        GPUHandle Handle = GenerateNewHandle(); 
+        PFence->m_Id = Handle;
+        m_Fences[Handle] = PFence;
+        *OutFence = m_Fences[Handle];
+    } 
+    else 
+    {
+        Free<D3D12Fence>(PFence);
+    }
+    return Result;
+}
+
+
+void D3D12GraphicsDevice::CleanUpFences()
+{
+    for (auto& RFence : m_Fences)
+    {
+        RFence.second->Release();
+        Free<D3D12Fence>(RFence.second);
+    }
+    m_Fences.clear();
 }
 } // Synthe

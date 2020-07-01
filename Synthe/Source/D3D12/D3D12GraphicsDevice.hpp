@@ -12,8 +12,13 @@
 #include "D3D12CommandList.hpp"
 
 #include <list>
+#include <unordered_map>
+
 
 namespace Synthe {
+
+
+class D3D12Fence;
 
 
 enum DescriptorType
@@ -115,6 +120,12 @@ public:
 
     ResultCode DestroyCommandLists(U32 NumCommandLists, GraphicsCommandList** CommandLists) override;
 
+    //! Create a D3D12 native GPU fence.
+    //!
+    //! \param OutFence
+    //! \return 
+    ResultCode CreateFence(Fence** OutFence) override;
+
 private:
     //! Creates the back buffer queue.
     ResultCode CreateGraphicsQueue();
@@ -124,6 +135,8 @@ private:
 
     //! Creates the copy queue.
     ResultCode CreateCopyQueue();
+
+    void CleanUpFences();
 
     //! Cleans up buffering resources.
     void CleanUpBufferingResources();
@@ -152,9 +165,11 @@ private:
     U32                                 m_BufferIndex;
 
     std::list<D3D12GraphicsCommandList*> m_PerFrameCommandLists;
+    std::unordered_map<GPUHandle, D3D12Fence*> m_Fences;
     D3D12GraphicsCommandList           m_BackbufferCommandList;
 
     ID3D12Device*                       m_Device;
+    ID3D12Device5*                      m_AdvDevice;
     IDXGIFactory2*                      m_PFactory;
     IDXGIAdapter1*                      m_Adapter;
 #if DIRECTML_COMPATIBLE

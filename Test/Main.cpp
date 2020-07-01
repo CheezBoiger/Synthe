@@ -134,25 +134,27 @@ int main(int c, char* argv[])
         PDevice->CreateCommandList(CmdCi, &CmdList);
     }
 
+    Fence* PFence = nullptr;
+    PDevice->CreateFence(&PFence);
+
     CommandListSubmitInfo CmdSi = { };
     CmdSi.NumCommandLists = 1;
     CmdSi.PCmdLists = &CmdList;
     CmdSi.QueueToSubmit = SubmitQueue_GRAPHICS;
+    CmdSi.NumSignalFences = 1;
+    CmdSi.SignalFences = &PFence;
 
     while (!PWindow->GetShouldClose()) 
     {
         PollEvents();
-
         PDevice->Begin();
             GPUHandle BackbufferRTV = PDevice->GetSwapchain()->GetCurrentBackBufferRTV();
             CmdList->Begin();
                 CmdList->SetRenderTargets(1, &BackbufferRTV, nullptr);
-                
                 ClearColorValue Clear = { 1.0f, 0.0f, 0.0f, 1.0f };
                 TargetBounds Bound = { 0, 0, 1920, 1080 };
                 CmdList->ClearRenderTarget(BackbufferRTV, &Clear, 1, &Bound);
             CmdList->End();
-
             PDevice->SubmitCommandLists(1, &CmdSi);
             PDevice->Present();
         PDevice->End();

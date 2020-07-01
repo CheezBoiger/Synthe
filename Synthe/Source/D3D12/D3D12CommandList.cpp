@@ -23,7 +23,7 @@ ResultCode D3D12GraphicsCommandList::Initialize(ID3D12Device* PDevice,
     for (U32 Idx = 0; Idx < m_CommandLists.size(); ++Idx)
     {
         HRESULT Result = PDevice->CreateCommandList(0, Type, CommandAllocators[Idx], nullptr, 
-                            __uuidof(ID3D12GraphicsCommandList), (void**)&m_CommandLists[Idx].PCmdList);
+                            __uuidof(ID3D12GraphicsCommandList5), (void**)&m_CommandLists[Idx].PCmdList);
         if (FAILED(Result))
         {
             return SResult_FAILED;
