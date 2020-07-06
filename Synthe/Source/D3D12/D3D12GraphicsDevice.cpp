@@ -85,25 +85,30 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
 
 void InitializeDescriptorHeaps(ID3D12Device* PDevice, U32 BufferingCount)
 {
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_CBV_SRV_UAV, BufferingCount);
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_CBV_SRV_UAV_UPLOAD, 1);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_CBV_SRV_UAV, BufferingCount);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_CBV_SRV_UAV_UPLOAD, 1);
     
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_SAMPLER, BufferingCount);
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_SAMPLER_UPLOAD, 1);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_SAMPLER, BufferingCount);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_SAMPLER_UPLOAD, 1);
 
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_RTV, 1U);
-    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorType_DSV, 1U);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_RTV, 1U);
+    D3D12DescriptorManager::CreateAndRegisterDescriptorPools(DescriptorHeapType_DSV, 1U);
     
-    // Resource creations.
-    D3D12DescriptorManager::GetDescriptorPool(DescriptorType_RTV)->Create(PDevice, 
+    // Host Descriptor heaps.
+    D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_RTV)->Create(PDevice, 
         D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 512);
-    D3D12DescriptorManager::GetDescriptorPool(DescriptorType_DSV)->Create(PDevice,
+    D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_DSV)->Create(PDevice,
         D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 2048);
+    D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD)->Create(
+        PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 8192);
+    D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER_UPLOAD)->Create(
+        PDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 1024);
+    // Device Descriptor heaps.
     for (U32 I = 0; I < BufferingCount; ++I)
     {
-        D3D12DescriptorManager::GetDescriptorPool(DescriptorType_CBV_SRV_UAV, I)->Create(PDevice, 
+        D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, I)->Create(PDevice, 
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 8192);
-        D3D12DescriptorManager::GetDescriptorPool(DescriptorType_SAMPLER, I)->Create(PDevice,
+        D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER, I)->Create(PDevice,
             D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 1024);
     }
 }
@@ -303,7 +308,7 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
     // Initialize our swapchain.
     m_Swapchain.Initialize(SwapchainConfig, m_GraphicsQueue, PFactory);
     // Initialize RTVs for swapchain.
-    m_Swapchain.BuildRTVs(m_Device, D3D12DescriptorManager::GetDescriptorPool(DescriptorType_RTV));
+    m_Swapchain.BuildRTVs(m_Device, D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_RTV));
 
     QueryBufferingResources(SwapchainConfig.Buffering);
 
@@ -745,7 +750,7 @@ ResultCode D3D12GraphicsDevice::CreateRenderTargetView(const RenderTargetViewCre
     }
     // Just return the pointer as a gpu handle.
     D3D12_CPU_DESCRIPTOR_HANDLE RtvHandle = 
-        D3D12DescriptorManager::GetDescriptorPool(DescriptorType_RTV)->CreateRtv(
+        D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_RTV)->CreateRtv(
             m_Device, Desc, ResourceStateO.PResource);
     *OutHandle = RtvHandle.ptr;
     return SResult_OK;

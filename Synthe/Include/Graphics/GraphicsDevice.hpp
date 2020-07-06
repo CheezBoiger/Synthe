@@ -6,6 +6,7 @@
 #include "Common/Types.hpp"
 #include "Graphics/GraphicsStructs.hpp"
 #include "Graphics/GraphicsCommandList.hpp"
+#include "Graphics/PipelineState.hpp"
 
 
 namespace Synthe {
@@ -23,11 +24,11 @@ struct GraphicsDeviceFeatures
     U64 DedicatedVideoMemoryInBytes;
     U64 DedicatedSystemMemoryInBytes;
     U64 SharedSystemMemory;
-    B64 RayTracingCompatible : 1,
-        VariableRateShadingCompatible : 1,
-        ConservativeRasterCompatible : 1,
-        TiledResourcesCompatible : 1,
-        BarycentricsCompatible : 1;
+    B64 RayTracingCompatible            : 1,
+        VariableRateShadingCompatible   : 1,
+        ConservativeRasterCompatible    : 1,
+        TiledResourcesCompatible        : 1,
+        BarycentricsCompatible          : 1;
 };
 
 
@@ -182,7 +183,11 @@ public:
 
     //! 
     virtual ResultCode DestroyResource(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
+
+    //!
     virtual ResultCode DestroyShaderResourceView(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
+    
+    //!
     virtual ResultCode DestroyFence(GPUHandle Handle) { return SResult_NOT_IMPLEMENTED; }
 
     //! Get this current device's features. GraphicsDevice must be initialized, before calling this
@@ -194,12 +199,21 @@ public:
     virtual ResultCode CreateBuffer(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
 
     //! Begin next buffer for rendering.
+    //!
     virtual void Begin() { }
 
     //! End the frame buffer. This should be called after rendering and submitting.
+    //!
     virtual void End() { }
 
+    //! Get the overall dedicated heap size allocated for the device.
+    //!
+    //! \return The size of the dedicated heap in bytes.
     virtual U64 GetGPUHeapSizeInBytes() { return 0ULL; }
+
+    //! Get the overall host heap size allocated for the device.
+    //!
+    //! \return The size of the host heap in bytes.
     virtual U64 GetCPUHeapSizeInBytes() { return 0ULL; }
 
     //! Get the amount of memory in bytes currently occupied by a memory pool.
@@ -220,10 +234,18 @@ public:
                                          GraphicsCommandList** PCmdList) { return SResult_NOT_IMPLEMENTED; }
 
     //! Submit CommandLists.
+    //!
+    //! \param NumSubmits
+    //! \param PSubmitInfos
+    //! \return 
     virtual ResultCode SubmitCommandLists(U32 NumSubmits, 
                                           const CommandListSubmitInfo* PSubmitInfos) { return SResult_NOT_IMPLEMENTED; }
 
     //! Destroy command lists.
+    //!
+    //! \param NumCommandLists
+    //! \param CommandList
+    //! \return
     virtual ResultCode DestroyCommandLists(U32 NumCommandLists, 
                                            GraphicsCommandList** CommandList) { return SResult_NOT_IMPLEMENTED; }
 
@@ -234,25 +256,30 @@ public:
 
     //! Create a graphics rasterization pipeline for use with rendering.
     //!
+    //! \param OutHandle
+    //! \param CreateInfo
     //! \return SResult_OK if the call succeeds.
-    virtual ResultCode CreateGraphicsPipeline() { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateGraphicsPipeline(GPUHandle* OutHandle, 
+                                              const GraphicsPipelineStateCreateInfo& CreateInfo) { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a compute pipeline for use with rendering and other tasks.
     //!
+    //! \param OutHandle
+    //! \param CreateInfo
     //! \return SResult if the call succeeds.
-    virtual ResultCode CreateComputePipeline() { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateComputePipeline(GPUHandle* OutHandle,
+                                            const ComputePipelineStateCreateInfo& CreateInfo) 
+        { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a hardware accelerated ray tracing pipeline for use with rendering.
     //! Note that this only works on hardware with supported ray tracing features.
     //!
+    //! \param OutHandle
+    //! \param CreateInfo
     //! \return 
-    virtual ResultCode CreateRayTracingPipeline() { return SResult_NOT_IMPLEMENTED; }
-
-    //! Create a Mesh shading pipeline for use with rendering. Note that this only works
-    //! on hardware with supported mesh shading features.
-    //!
-    //! \return 
-    virtual ResultCode CreateMeshPipeline() { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateRayTracingPipeline(GPUHandle* OutHandle,
+                                                const RayTracingPipelineStateCreateInfo& CreateInfo) 
+        { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a gpu fence for use with syncronizing submits.
     //! 
@@ -260,6 +287,22 @@ public:
     //! \return SResult_OK if the call succeeds, and the fence is created. Any other code
     //!         signals a failure, along with no value stored for fence.
     virtual ResultCode CreateFence(Fence** OutFence) { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a Root signature that defines the layout of the descriptor 
+    //! and resource layouts to be used for a given pipeline state.
+    //!
+    //! \param OutHandle
+    //! \param CreateInfo
+    //! \return SResult_OK if the function succeeds, and OutHandle is stored. Any other code
+    //!         will output failure and no value is passed to OutHandle.
+    virtual ResultCode CreateRootSignature(GPUHandle** OutHandle,
+                                           const RootSignatureCreateInfo& CreateInfo) 
+        { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create a Sampler for texture use.
+    //! 
+    //! \return SResult_ON if the function succeeds. Any other code will signify a failure.
+    virtual ResultCode CreateSampler() { return SResult_NOT_IMPLEMENTED; }
 
 protected:  
     GraphicsDeviceFeatures m_Features;

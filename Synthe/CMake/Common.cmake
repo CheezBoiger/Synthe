@@ -19,8 +19,13 @@ set ( SYNTHE_MEMORY_FILES
     ${SYNTHE_MEMORY_INC_DIR}/Allocator.hpp
     ${SYNTHE_MEMORY_INC_DIR}/LinearAllocator.hpp
     ${SYNTHE_MEMORY_INC_DIR}/NewAllocator.hpp
+    ${SYNTHE_MEMORY_INC_DIR}/BuddyAllocator.hpp
+    ${SYNTHE_MEMORY_INC_DIR}/FreeListAllocator.hpp
     
     ${SYNTHE_MEMORY_SRC_DIR}/LinearAllocator.cpp
+    ${SYNTHE_MEMORY_SRC_DIR}/NewAllocator.cpp
+    ${SYNTHE_MEMORY_SRC_DIR}/BuddyAllocator.cpp
+    ${SYNTHE_MEMORY_SRC_DIR}/FreeListAllocator.cpp
 )
 
 set ( SYNTHE_COMMON_FILES

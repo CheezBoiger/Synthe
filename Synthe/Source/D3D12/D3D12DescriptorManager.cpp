@@ -134,6 +134,19 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorPool::GetGPUAddressFromCPUAddress(D3D12_CP
 }
 
 
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::GetCPUAddressFromGPUAddress(D3D12_GPU_VIRTUAL_ADDRESS Address)
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle = GetBaseCPUAddress();
+    D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle = GetBaseGPUAddress();
+    if ((Address - GPUHandle.ptr) > m_TotalDescriptorHeapSizeInBytes)
+    {
+        return CPUHandle;
+    }
+    CPUHandle.ptr += (Address - GPUHandle.ptr);
+    return CPUHandle;
+}
+
+
 ResultCode DescriptorPool::Release()
 {
     if (m_DescriptorHeap)
@@ -155,6 +168,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateSrv(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateShaderResourceView(PResource, &Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
@@ -171,6 +185,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateDsv(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateDepthStencilView(PResource, &Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
@@ -187,6 +202,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateRtv(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateRenderTargetView(PResource, &Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
@@ -202,6 +218,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateCbv(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateConstantBufferView(&Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
@@ -219,6 +236,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateUav(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateUnorderedAccessView(PResource, PCounterResource, &Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
@@ -234,18 +252,19 @@ D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPool::CreateSampler(ID3D12Device* PDevice,
         m_LastCpuHandle.ptr += m_AlignmentSizeInBytes;
     }
     PDevice->CreateSampler(&Info, Handle);
+    m_CurrentNumberOfDescriptors += 1;
     return Handle;
 }
 
 
 // Initialize Descriptor Table.
-void InitializeDescriptorTable(D3D12_GPU_DESCRIPTOR_HANDLE DescriptorPoolBaseGPUAddress, 
+void InitializeDescriptorTable(D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPoolBaseCPUAddress, 
                                U64 OffsetInBytes, 
                                DescriptorTable* POutTable)
 {
-    DescriptorPoolBaseGPUAddress.ptr += OffsetInBytes;
+    DescriptorPoolBaseCPUAddress.ptr += OffsetInBytes;
     POutTable->TableSizeInBytes = OffsetInBytes;
-    POutTable->StartingAddress = DescriptorPoolBaseGPUAddress.ptr;  
+    POutTable->StartingAddress = DescriptorPoolBaseCPUAddress;  
 }
 
 
@@ -266,7 +285,7 @@ ResultCode DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
     if (POutTable) 
     {
         U64 OffsetInBytes = OffsetInDescriptorCount * m_AlignmentSizeInBytes;
-        InitializeDescriptorTable(GetBaseGPUAddress(), OffsetInBytes, POutTable);
+        InitializeDescriptorTable(GetBaseCPUAddress(), OffsetInBytes, POutTable);
     } 
     else 
     {
@@ -286,9 +305,10 @@ ResultCode DescriptorPool::CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorTableOffsetAddress = GetBaseCPUAddress();
     DescriptorTableOffsetAddress.ptr += OffsetInBytes;
     PDevice->CopyDescriptorsSimple(SrcDescriptorSize, DescriptorTableOffsetAddress, SrcDescriptorHandle, m_DescriptorHeapType);
+    
     if (POutTable)
     {
-        InitializeDescriptorTable(GetBaseGPUAddress(), OffsetInBytes, POutTable);
+        InitializeDescriptorTable(GetBaseCPUAddress(), OffsetInBytes, POutTable);
     } 
     else 
     {
@@ -315,13 +335,13 @@ ResultCode DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
     for (U32 I = 0; I < NumSrcDescriptorStarts; ++I)
     {
         U64 SizeInBytes = static_cast<U64>(NumDstOffsetsInDescriptorCount[I] * m_AlignmentSizeInBytes);
-        D3D12_GPU_DESCRIPTOR_HANDLE PoolGPUAddressOffset = { GetBaseGPUAddress().ptr + NumDstOffsetsInDescriptorCount[I] };
+        D3D12_CPU_DESCRIPTOR_HANDLE PoolCPUAddressOffset = { GetBaseCPUAddress().ptr + NumDstOffsetsInDescriptorCount[I] };
         DstCPUHandles[I].ptr = BasePoolAddress.ptr + SizeInBytes;
         DstCPUSizes[I] = static_cast<U32>(SizeInBytes);
 
         if (PPDescriptorTables[I])
         {
-            PPDescriptorTables[I]->StartingAddress = PoolGPUAddressOffset.ptr;
+            PPDescriptorTables[I]->StartingAddress = PoolCPUAddressOffset;
             PPDescriptorTables[I]->TableSizeInBytes = SizeInBytes;
         }
     }
@@ -334,6 +354,33 @@ ResultCode DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
                              SrcCPUSizes,     
                              m_DescriptorHeapType);
     
+    return SResult_OK;
+}
+
+
+ResultCode DescriptorPool::AllocateDescriptorTable(DescriptorTable* OutTable, U64 SizeInBytes)
+{
+    if (SizeInBytes == 0ULL)
+    {
+        return SResult_INVALID_ARGS;
+    }
+    U64 PotentialLocation = m_LastCpuHandle.ptr + SizeInBytes;
+    if (PotentialLocation >= m_TotalDescriptorHeapSizeInBytes)
+    {
+        return SResult_OUT_OF_MEMORY;
+    }
+
+    if (!OutTable)
+    {
+        return SResult_MEMORY_NULL_EXCEPTION;
+    }    
+
+    OutTable->StartingAddress = m_LastCpuHandle;
+    OutTable->TableSizeInBytes = SizeInBytes;
+
+    m_LastGpuHandle.ptr += SizeInBytes;
+    m_LastCpuHandle.ptr = PotentialLocation;
+    m_CurrentNumberOfDescriptors += SizeInBytes / m_AlignmentSizeInBytes;
     return SResult_OK;
 }
 } // Synthe 

@@ -21,20 +21,20 @@ namespace Synthe {
 class D3D12Fence;
 
 
-enum DescriptorType
+enum DescriptorHeapType
 {
     // GPU based cbv srv uav heap.
-    DescriptorType_CBV_SRV_UAV,
+    DescriptorHeapType_CBV_SRV_UAV,
     // CPU controlled cbv srv uav heap.
-    DescriptorType_CBV_SRV_UAV_UPLOAD,
+    DescriptorHeapType_CBV_SRV_UAV_UPLOAD,
     // CPU controlled sampler heap.
-    DescriptorType_SAMPLER_UPLOAD,
+    DescriptorHeapType_SAMPLER_UPLOAD,
     // GPU controlled sampler heap.
-    DescriptorType_SAMPLER,
+    DescriptorHeapType_SAMPLER,
     // CPU controlled rtv heap.
-    DescriptorType_RTV,
+    DescriptorHeapType_RTV,
     // CPU controlled dsv heap.
-    DescriptorType_DSV
+    DescriptorHeapType_DSV
 };
 
 

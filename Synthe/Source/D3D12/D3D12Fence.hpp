@@ -10,6 +10,7 @@
 namespace Synthe {
 
 
+//! Direct3D 12 fence. 
 class D3D12Fence : public Fence
 {
 public:

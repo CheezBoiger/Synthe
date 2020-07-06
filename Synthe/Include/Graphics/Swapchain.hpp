@@ -17,10 +17,18 @@ public:
     Swapchain() : m_Config() { }
     virtual ~Swapchain() { }
 
+    //! Resize the image swapchain resolution.
     virtual void Resize(const SwapchainConfig& Config) = 0;
 
+    //! Get the configurations of the swapchain.
+    //!
+    //! \return The Swapchain configuration data.
     SwapchainConfig GetConfig() const { return m_Config; } 
 
+    //! Present the framebuffer to the window.
+    //!
+    //! \return SResult_OK if the present suceeds and submits for display. False otherwise,
+    //!         where the result code will determine the reason of failure.
     virtual ResultCode Present() { return SResult_NOT_IMPLEMENTED; }
 
     //! Get the current backbuffer render target view.

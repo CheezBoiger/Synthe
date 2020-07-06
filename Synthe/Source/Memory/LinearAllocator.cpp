@@ -18,8 +18,7 @@ ResultCode LinearAllocator::Allocate(AllocationBlock* Block, U64 SizeInBytes, U6
 {
     // Expand needed bytes for alignment, to use on aligning the address.
     // Find the padding of the requested Size, and apply to the Expanded/Needed Size.
-    U64 Padding = (Alignment - (SizeInBytes & (Alignment - 1))) & (Alignment - 1);
-    U64 NeededBytes = (SizeInBytes + (Alignment - 1)) & ~(Alignment - 1);
+    U64 NeededBytes = ALIGN_BYTES(SizeInBytes, Alignment);
     // Just calculate the last address bound of the memory block.
     U64 LastPtr = m_BaseAddress + m_TotalSizeInBytes;
     U64 FuturePtr = m_Top + NeededBytes;
@@ -33,7 +32,7 @@ ResultCode LinearAllocator::Allocate(AllocationBlock* Block, U64 SizeInBytes, U6
         return SResult_INITIALIZATION_FAILURE;
     }
 
-    Block->StartAddress = ALIGN_BYTES(m_Top, Alignment);
+    Block->StartAddress = m_Top;
     Block->SizeInBytes = SizeInBytes;
     Block->AllocationID = static_cast<U32>(m_NumAllocations++);
     Block->AllocatorPoolID = m_ID;

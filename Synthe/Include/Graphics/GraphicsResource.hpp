@@ -14,14 +14,14 @@ namespace Synthe {
 
 enum DescriptorType
 {
-    DescriptorType_BUFFER,
+    DescriptorType_CONSTANT_BUFFER,
     DescriptorType_SAMPLER,
     DescriptorType_SHADER_RESOURCE_VIEW,
     DescriptorType_UNORDERED_ACCESS_VIEW
 };
 
 
-struct BufferDescriptorInfo
+struct ConstantBufferDescriptorInfo
 {
 };
 
@@ -46,8 +46,9 @@ struct DescriptorInfo
 {
     DescriptorType Type;
     U32 Binding;
+    GPUHandle ViewHandle;
     union {
-        BufferDescriptorInfo Buffer;
+        ConstantBufferDescriptorInfo Buffer;
         ShaderResourceViewDescriptorInfo ShaderResourceView;
         UnorderedAccessViewDescriptorInfo UnorderedAccessView;
         SamplerDescriptorInfo Sampler;
@@ -55,18 +56,24 @@ struct DescriptorInfo
 };
 
 
+//! Create info for descriptor set.
 struct DescriptorSetCreateInfo
 {
+    //! Descriptors to register to our descriptor set.
     DescriptorInfo* PDescriptors;
+
+    //! Number of descriptors to register.
     U32 NumDescriptors;
 };
 
 
+//! Descriptor Set object designed to ease the use of descriptor binding 
+//! with low level APIs.
 class DescriptorSet
 {
 public:
     //! Update the descriptor set with new implementations.
-    virtual ResultCode Update(DescriptorSetCreateInfo* Info) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode Update(const DescriptorSetCreateInfo& Info) { return SResult_NOT_IMPLEMENTED; }
 
     //! Cleanup the descriptor set.
     virtual ResultCode CleanUp() { return SResult_NOT_IMPLEMENTED; }

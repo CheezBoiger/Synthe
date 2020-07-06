@@ -19,10 +19,15 @@ typedef U64 DescriptorKeyID;
 //! bound on render command recording.
 struct DescriptorTable
 {
-    //! The starting GPU address of the descriptor table.
-    D3D12_GPU_VIRTUAL_ADDRESS StartingAddress;
+    DescriptorTable(D3D12_CPU_DESCRIPTOR_HANDLE StartAddress = BASE_CPU_DESCRIPTOR_ALLOC,
+                    U64 SizeInBytes = 0ULL)
+        : StartingAddress(StartAddress)
+        , TableSizeInBytes(SizeInBytes) { }
+
+    //! The starting CPU address of the descriptor table.
+    D3D12_CPU_DESCRIPTOR_HANDLE StartingAddress;
     
-    //! The end GPU address of the descriptor table.
+    //! The end CPU address of the descriptor table.
     UINT64 TableSizeInBytes;
 };
 
@@ -56,6 +61,13 @@ public:
     //!         Any other code otherwise should signal a failure.
     ResultCode Release();
     
+    //! Allocate and reserve space for a descriptor table.
+    //!
+    //! \param OutTable
+    //! \param SizeInBytes
+    //! \return SResult_OK if the call succeeds.
+    ResultCode AllocateDescriptorTable(DescriptorTable* OutTable, U64 SizeInBytes);
+
     //! Create a Shader Resource View from this descriptor pool.
     //!
     //! \param PDevice
@@ -136,7 +148,8 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE CreateSampler(ID3D12Device* PDevice,
                                               D3D12_SAMPLER_DESC& Info,
                                               D3D12_CPU_DESCRIPTOR_HANDLE LocationInDescriptorHeap = BASE_CPU_DESCRIPTOR_ALLOC);
-    
+
+
     //! Get The descriptor heap type. 
     //! \return The type of this descriptor pool.
     D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType() const { return m_DescriptorHeapType; }
@@ -211,6 +224,11 @@ public:
     //!         inpute CPU handle is not within this descriptor table.
     D3D12_GPU_DESCRIPTOR_HANDLE GetGPUAddressFromCPUAddress(D3D12_CPU_DESCRIPTOR_HANDLE Handle);
 
+    //! Get the CPU address via gpu address. Returns the base CPU address if not possible to find the given
+    //! input gpu handle.
+    //! 
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUAddressFromGPUAddress(D3D12_GPU_VIRTUAL_ADDRESS Address);
+
     //! Get the CPU address with descriptor count offset.
     //!
     //! \param DescriptorCountOffset
@@ -223,6 +241,16 @@ public:
     //! \param OffsetInBytes The byte offset from the base of the descriptor heap.
     //! \return The CPU Address handle with the given offset.
     D3D12_CPU_DESCRIPTOR_HANDLE GetCPUAddressWithByteOffset(UINT64 OffsetInBytes);
+
+    //! Get the current number of descriptor heaps in this pool.
+    //!
+    //! \return The current number of descriptors registered.
+    UINT GetCurrentNumberOfDescriptors() const { return m_CurrentNumberOfDescriptors; }
+
+    //! Get the alignment size of the descriptor heap in bytes.
+    //!
+    //! \return The alignment size in bytes.
+    U64 GetAlignmentSizeInBytes() const { return static_cast<U64>(m_AlignmentSizeInBytes); }
 
 private:
     //! Descriptor heap handle from native context.
@@ -242,6 +270,9 @@ private:
     
     //! Fast access to descriptor heap type.
     D3D12_DESCRIPTOR_HEAP_TYPE m_DescriptorHeapType;
+
+    //! Current number of descriptors registered in this descriptor heap.
+    UINT m_CurrentNumberOfDescriptors;
 };
 
 
@@ -279,5 +310,14 @@ public:
 
     //!
     static ResultCode RemoveCachedDescriptorToResource(GPUHandle Descriptor);
+
+    //!
+    static ResultCode CacheDescriptorTable(DescriptorKeyID Key, DescriptorTable& Table);
+    
+    //!
+    static ResultCode GetDescriptorTable(DescriptorKeyID Key, DescriptorTable* Table);
+    
+    //!
+    static ResultCode RemoveDescriptorTable(DescriptorKeyID Key);
 };
 } // Synthe 
