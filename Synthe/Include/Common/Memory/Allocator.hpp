@@ -77,7 +77,7 @@ public:
         m_TotalSizeInBytes = TotalSizeInBytes;
         m_CurrentUsedBytes = 0ULL;
         m_NumAllocations = 0ULL;
-        m_ID = static_cast<U64>(0); //< I guess we can use the base address as our ID.
+        m_ID = static_cast<U32>(0); //< I guess we can use the base address as our ID.
         OnInitialize();
     }
 

@@ -3,14 +3,16 @@
 // Author: Mario Garcia
 #pragma once
 
+#include "GraphicsStructs.hpp"
 #include "Common/Types.hpp"
-
 
 namespace Synthe {
 
 
 class DescriptorSet;
 class Resource;
+class PipelineState;
+class RootSignature;
 
 
 enum CommandListLevel
@@ -65,19 +67,18 @@ public:
     virtual void DrawInstanced() { }
 
     //! Compute command that records a dispatch.
-    virtual void Dispatch() { }
+    virtual void Dispatch(U32 GlobalX, U32 GlobalY, U32 GlobalZ) { }
 
     //! Set the graphics pipeline state, along with the layout info.
-    virtual void SetGraphicsPipelineState() { }
-
-    //! Set the compute pipeline state, along with the layout info.
-    virtual void SetComputePipelineState() { }
+    virtual void SetPipelineState(PipelineStateType PipelineType, 
+                                  PipelineState* PPipelineState,
+                                  RootSignature* PRootSignature) { }
 
     //! Set viewports for the corresponding pass.
-    virtual void SetViewports(U32 NumViewports) { }
+    virtual void SetViewports(U32 NumViewports, const Viewport* PViewports) { }
 
     //! Set the scissors for the corresponding pass.
-    virtual void SetScissors(U32 NumScissors) { }
+    virtual void SetScissors(U32 NumScissors, const Scissor* PScissors) { }
 
     //! Set the render target views that will be used.
     virtual void SetRenderTargets(U32 NumRTVs, GPUHandle* RTVHandles, GPUHandle* DepthStencil) { }

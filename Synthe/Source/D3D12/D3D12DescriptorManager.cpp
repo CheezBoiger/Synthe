@@ -271,25 +271,14 @@ void InitializeDescriptorTable(D3D12_CPU_DESCRIPTOR_HANDLE DescriptorPoolBaseCPU
 ResultCode DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
                                              U32 NumSrcDescriptors,
                                              D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandles,
-                                             U64 OffsetInDescriptorCount,
-                                             DescriptorTable* POutTable)
+                                             D3D12_CPU_DESCRIPTOR_HANDLE DstDescriptorLocation)
 { 
     for (U32 I = 0; I < NumSrcDescriptors; ++I)     
     {
         // Each individual descriptor handle is copied, this is not the best efficiency, but 
         // if each descriptor handle is not consecutive, we will need to copy individually.
         CopyDescriptorsRangeConsecutive(PDevice, PSrcDescriptorHandles[I], 1, 
-                                        static_cast<U32>(OffsetInDescriptorCount) + I, nullptr);
-    }
-
-    if (POutTable) 
-    {
-        U64 OffsetInBytes = OffsetInDescriptorCount * m_AlignmentSizeInBytes;
-        InitializeDescriptorTable(GetBaseCPUAddress(), OffsetInBytes, POutTable);
-    } 
-    else 
-    {
-        return SResult_MEMORY_NULL_EXCEPTION;
+                                      { DstDescriptorLocation.ptr + static_cast<U64>(I * m_AlignmentSizeInBytes) });
     }
     return SResult_OK;
 }
@@ -297,23 +286,14 @@ ResultCode DescriptorPool::CopyDescriptorsRange(ID3D12Device* PDevice,
 
 ResultCode DescriptorPool::CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
                                                            D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
-                                                           U32 SrcDescriptorSize,
-                                                           U32 DstOffsetDescriptorCount,
-                                                           DescriptorTable* POutTable)
+                                                           U32 SrcNumDescriptors,
+                                                           D3D12_CPU_DESCRIPTOR_HANDLE DstDescriptorLocation)
 {
-    U64 OffsetInBytes = static_cast<U64>(DstOffsetDescriptorCount * m_AlignmentSizeInBytes);
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorTableOffsetAddress = GetBaseCPUAddress();
-    DescriptorTableOffsetAddress.ptr += OffsetInBytes;
-    PDevice->CopyDescriptorsSimple(SrcDescriptorSize, DescriptorTableOffsetAddress, SrcDescriptorHandle, m_DescriptorHeapType);
-    
-    if (POutTable)
+    if (SrcNumDescriptors == 0)
     {
-        InitializeDescriptorTable(GetBaseCPUAddress(), OffsetInBytes, POutTable);
-    } 
-    else 
-    {
-        return SResult_MEMORY_NULL_EXCEPTION;
+        return SResult_REFUSE_CALL;
     }
+    PDevice->CopyDescriptorsSimple(SrcNumDescriptors, DstDescriptorLocation, SrcDescriptorHandle, m_DescriptorHeapType);
     return SResult_OK;
 }
 
@@ -322,28 +302,20 @@ ResultCode DescriptorPool::CopyDescriptorRanges(ID3D12Device* PDevice,
                                                 U32 NumSrcDescriptorStarts,
                                                 D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
                                                 U32* PSrcDescriptorHandleCounts,
-                                                U32* NumDstOffsetsInDescriptorCount,
-                                                U32 NumDescriptorTableOuts,
-                                                DescriptorTable** PPDescriptorTables)
+                                                D3D12_CPU_DESCRIPTOR_HANDLE* DstDescriptorLocations,
+                                                U32* NumDstDescriptorSizes)
 {
     static D3D12_CPU_DESCRIPTOR_HANDLE DstCPUHandles[128];
     static U32 DstCPUSizes[128];
     static U32 SrcCPUSizes[128];
     U32 NumDstDescriptorRanges = 0;
 
-    D3D12_CPU_DESCRIPTOR_HANDLE BasePoolAddress = GetBaseCPUAddress();
     for (U32 I = 0; I < NumSrcDescriptorStarts; ++I)
     {
-        U64 SizeInBytes = static_cast<U64>(NumDstOffsetsInDescriptorCount[I] * m_AlignmentSizeInBytes);
-        D3D12_CPU_DESCRIPTOR_HANDLE PoolCPUAddressOffset = { GetBaseCPUAddress().ptr + NumDstOffsetsInDescriptorCount[I] };
-        DstCPUHandles[I].ptr = BasePoolAddress.ptr + SizeInBytes;
+        U64 SizeInBytes = static_cast<U64>(NumDstDescriptorSizes[I]);
+        D3D12_CPU_DESCRIPTOR_HANDLE PoolCPUAddressOffset = DstDescriptorLocations[I];
+        DstCPUHandles[I] = DstDescriptorLocations[I];
         DstCPUSizes[I] = static_cast<U32>(SizeInBytes);
-
-        if (PPDescriptorTables[I])
-        {
-            PPDescriptorTables[I]->StartingAddress = PoolCPUAddressOffset;
-            PPDescriptorTables[I]->TableSizeInBytes = SizeInBytes;
-        }
     }
     
     PDevice->CopyDescriptors(NumDstDescriptorRanges, 

@@ -10,9 +10,11 @@
 #include "Win32Common.hpp"
 #include "D3D12Swapchain.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12Resource.hpp"
 
 #include <list>
 #include <unordered_map>
+#include <map>
 
 
 namespace Synthe {
@@ -83,7 +85,15 @@ public:
     ResultCode Present() override;
 
     //! Create our resource.
-    ResultCode CreateResource(GPUHandle* Out, const ResourceCreateInfo* PCreateInfo, const ClearValue* PClearValue) override;
+    //!
+    //! \param Out
+    //! \param PCreateInfo
+    //! \param PCreateInfo
+    //! \param PClearValue
+    //! \return 
+    ResultCode CreateResource(GPUHandle* Out, 
+                              const ResourceCreateInfo* PCreateInfo, 
+                              const ClearValue* PClearValue) override;
 
     //! Get the buffering resource corresponding to the buffer index.
     const BufferingResource& GetBufferingResource(U32 BufferIndex) const { return m_BufferingResources[BufferIndex]; }
@@ -96,11 +106,16 @@ public:
     ResultCode SubmitCommandLists(U32 NumSubmits, 
                                   const CommandListSubmitInfo* PSubmitInfos) override;
 
+    //!
     ResultCode CreateCommandList(CommandListCreateInfo& Info, 
                                  GraphicsCommandList** PList) override;
 
+    //!
     ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
                                       GPUHandle* OutHandle) override;
+
+    //!
+    ResultCode CreateRootSignature(RootSignature** PRootSignature, const RootSignatureCreateInfo& CreateInfo) override;
 
     //! Begin the frame. This will prepare resources, along with prepare command lists and 
     //! other buffering resources.
@@ -125,6 +140,14 @@ public:
     //! \param OutFence
     //! \return 
     ResultCode CreateFence(Fence** OutFence) override;
+
+    //! Get the native advanced device.
+    //!
+    ID3D12Device5* GetNativeAdv() { return m_AdvDevice; }
+    
+    //! Get the native device.
+    //!
+    ID3D12Device* GetNative() { return m_Device; }
 
 private:
     //! Creates the back buffer queue.
@@ -164,6 +187,7 @@ private:
 
     U32                                 m_BufferIndex;
 
+    std::map<GPUHandle, D3D12DescriptorSet*> m_DescriptorSets;
     std::list<D3D12GraphicsCommandList*> m_PerFrameCommandLists;
     std::unordered_map<GPUHandle, D3D12Fence*> m_Fences;
     D3D12GraphicsCommandList           m_BackbufferCommandList;

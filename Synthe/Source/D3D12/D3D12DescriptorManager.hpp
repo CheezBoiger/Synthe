@@ -13,6 +13,8 @@ namespace Synthe {
 
 typedef U64 DescriptorKeyID;
 
+class D3D12DescriptorSet;
+
 
 //! Descriptor table is an object that holds the handle to a base address of a descriptor heap,
 //! along with the size of the table. These are used to represent arrays of descriptors to be 
@@ -160,29 +162,26 @@ public:
     //! \param PDevice  
     //! \param NumSrcDescriptors
     //! \param PSrcDescriptorHandles
-    //! \param OffsetInDescriptorCount
-    //! \param POutTable
+    //! \param DstDescriptorLocation
     //! \return A resulting code. GResult_OK should also return with data for the POutTable parameter.
     //!         Should any other result code be returned, then no data will be written onto the POutTable
     //!         parameter.
     ResultCode CopyDescriptorsRange(ID3D12Device* PDevice,
                                     U32 NumSrcDescriptors,
                                     D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandles,
-                                    U64 OffsetInDescriptorCount,
-                                    DescriptorTable* POutTable);
+                                    D3D12_CPU_DESCRIPTOR_HANDLE DstDescriptorLocation);
 
     //! Copy a descriptor range that contains consecutive handles, so a single handle is required.
     //!
     //! \param PDevice
     //! \param PSrcDescriptorHandle
     //! \param SrcDescriptorSize
-    //! \param DstOffsetDescriptorCount
+    //! \param DstDescriptorLocation
     //! \return The resulting code.
     ResultCode CopyDescriptorsRangeConsecutive(ID3D12Device* PDevice,
                                                D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorHandle,
-                                               U32 SrcDescriptorSize,
-                                               U32 DstOffsetInDescriptorCount,
-                                               DescriptorTable* POutTable);
+                                               U32 SrcNumDescriptors,
+                                               D3D12_CPU_DESCRIPTOR_HANDLE DstDescriptorLocation);
 
     //! Copy Descriptor handle ranges all in one. This will consume copies for descriptor handle ranges,
     //! each range of which contain their own consecutive handles.
@@ -192,16 +191,15 @@ public:
     //! \param PSrcDescriptorHandleStarts
     //! \param PSrcDescriptorHandleSizes
     //! \param NumDstOffsetsInDescriptorCount
-    //! \param NuDescriptorTableOuts
-    //! \param PPDescriptorTables
+    //! \param NumDstDescriptorSizes Total size in bytes of the dst descriptors (the count) corresponding to 
+    //!                              array of DstDescriptorLocations.
     //! \return The resulting code.
     ResultCode CopyDescriptorRanges(ID3D12Device* PDevice,
                                     U32 NumSrcDescriptorStarts,
                                     D3D12_CPU_DESCRIPTOR_HANDLE* PSrcDescriptorHandleStarts,
                                     U32* PSrcDescriptorHandleSizes,
-                                    U32* NumDstOffsetsInDescriptorCount,
-                                    U32 NumDescriptorTablesOuts,
-                                    DescriptorTable** PPDescriptorTables);
+                                    D3D12_CPU_DESCRIPTOR_HANDLE* DstDescriptorLocations,
+                                    U32* NumDstDescriptorSizes);
 
     //! Obtain the base cpu address from this descriptor pool.
     //!
@@ -311,13 +309,13 @@ public:
     //!
     static ResultCode RemoveCachedDescriptorToResource(GPUHandle Descriptor);
 
+    //! 
+    static ResultCode CacheDescriptorSet(GPUHandle DescriptorHandle, D3D12DescriptorSet* Set);
+
     //!
-    static ResultCode CacheDescriptorTable(DescriptorKeyID Key, DescriptorTable& Table);
-    
-    //!
-    static ResultCode GetDescriptorTable(DescriptorKeyID Key, DescriptorTable* Table);
-    
-    //!
-    static ResultCode RemoveDescriptorTable(DescriptorKeyID Key);
+    static ResultCode GetDescriptorSet(GPUHandle DescriptorHandle, D3D12DescriptorSet** OutSet);
+
+    //! 
+    static ResultCode RemoveDescriptorSet(GPUHandle DescriptorHandle);
 };
 } // Synthe 

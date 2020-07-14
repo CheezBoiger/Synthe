@@ -6,6 +6,7 @@
 #include "D3D12GraphicsDevice.hpp"
 #include "D3D12DescriptorManager.hpp"
 #include "D3D12MemoryManager.hpp"
+#include "D3D12Resource.hpp"
 
 
 namespace Synthe {
@@ -78,8 +79,33 @@ void D3D12GraphicsCommandList::SetRenderTargets(U32 NumRTVs, GPUHandle* RTVHandl
 }
 
 
-void D3D12GraphicsCommandList::SetViewports(U32 NumViewports)
+void D3D12GraphicsCommandList::SetViewports(U32 NumViewports, const Viewport* PViewports)
 {
+    D3D12_VIEWPORT Viewports[8];
+    for (U32 I = 0; I < NumViewports; ++I)
+    {
+        Viewports[I].Height = PViewports[I].Height;
+        Viewports[I].Width = PViewports[I].Width;
+        Viewports[I].TopLeftX = PViewports[I].X;
+        Viewports[I].TopLeftY = PViewports[I].Y;
+        Viewports[I].MinDepth = PViewports[I].MinDepth;
+        Viewports[I].MaxDepth = PViewports[I].MaxDepth;
+    }
+    m_CommandLists[m_CurrentRecordingIdx].PCmdList->RSSetViewports(NumViewports, Viewports);
+}
+
+
+void D3D12GraphicsCommandList::SetScissors(U32 NumScissors, const Scissor* PScissors)
+{
+    D3D12_RECT Scissors[8];
+    for (U32 I = 0; I < NumScissors; ++I)
+    {
+        Scissors[I].left = PScissors[I].Left;
+        Scissors[I].right = PScissors[I].Right;
+        Scissors[I].top = PScissors[I].Top;
+        Scissors[I].bottom = PScissors[I].Bottom;
+    }
+    m_CommandLists[m_CurrentRecordingIdx].PCmdList->RSSetScissorRects(NumScissors, Scissors);
 }
 
 
@@ -118,5 +144,44 @@ void D3D12GraphicsCommandList::TransitionResourceIfNeeded(U32 NumHandles, GPUHan
         D3D12MemoryManager::UpdateResourceState(Key, NeededStates[I]);
     }
     m_CommandLists[m_CurrentRecordingIdx].PCmdList->ResourceBarrier(NumHandles, Barriers);
+}
+
+
+void D3D12GraphicsCommandList::BindDescriptorSets(U32 NumSets, DescriptorSet* const* PDescriptorSets)
+{
+    for (U32 I = 0; I < NumSets; ++I)
+    {
+        const D3D12DescriptorSet* Set = static_cast<const D3D12DescriptorSet*>(PDescriptorSets[I]);
+        D3D12_GPU_DESCRIPTOR_HANDLE DescriptorTableGPUAddress = 
+            D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD)->GetGPUAddressFromCPUAddress(
+                Set->GetTable().StartingAddress);
+        
+        m_CommandLists[m_CurrentRecordingIdx].PCmdList->SetGraphicsRootDescriptorTable(
+            I, DescriptorTableGPUAddress);
+    }
+}
+
+
+void D3D12GraphicsCommandList::SetPipelineState(PipelineStateType PipelineType,
+                                                PipelineState* PPipelineState,
+                                                RootSignature* PRootSignature)
+{
+    ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
+    ID3D12RootSignature* Signature = static_cast<D3D12RootSignature*>(PRootSignature)->GetSignature();
+    switch (PipelineType)
+    {
+        case PipelineStateType_GRAPHICS:
+        {
+            // Set Graphics Root resources.
+            
+            CommandList->SetGraphicsRootSignature(Signature);
+            break;
+        }
+        case PipelineStateType_COMPUTE:
+        {
+            CommandList->SetComputeRootSignature(Signature);
+            break;
+        }
+    }
 }
 } // Synthe

@@ -4,6 +4,7 @@
 
 #include "D3D12GraphicsDevice.hpp"
 #include "D3D12DescriptorManager.hpp"
+#include "D3D12Resource.hpp"
 #include "D3D12MemoryManager.hpp"
 
 #include "D3D12Fence.hpp"
@@ -11,10 +12,15 @@
 namespace Synthe {
 
 
-GraphicsDevice* CreateDeviceD3D12()
+GraphicsDevice* GetDeviceD3D12()
 {
-    static D3D12GraphicsDevice Device;
-    return &Device;
+    // TODO: Figure out a better design to allocate our device.
+    static D3D12GraphicsDevice* Device = nullptr;
+    if (!Device)
+    {
+        Device = Malloc<D3D12GraphicsDevice>();
+    }
+    return Device;
 }
 
 
@@ -449,6 +455,12 @@ void D3D12GraphicsDevice::Begin()
     }
     // Update our backbuffer commandlist too.
     m_BackbufferCommandList.SetCurrentIdx(m_BufferIndex);
+
+    D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, m_BufferIndex)->ResetPool();
+    for (std::pair<const GPUHandle, D3D12DescriptorSet*>& Set : m_DescriptorSets)
+    {
+        Set.second->UploadToShaderVisibleHeap(m_Device, m_BufferIndex);
+    }
 }
 
 
@@ -784,5 +796,50 @@ void D3D12GraphicsDevice::CleanUpFences()
         Free<D3D12Fence>(RFence.second);
     }
     m_Fences.clear();
+}
+
+
+void D3D12GraphicsDevice::ReleaseAsyncQueue()
+{
+    if (m_AsyncQueue)
+    {
+        m_AsyncQueue->Release();
+    }
+    m_AsyncQueue = nullptr;
+}
+
+
+void D3D12GraphicsDevice::ReleaseCopyQueue()
+{
+    if (m_CopyQueue)
+    {
+        m_CopyQueue->Release();
+    }
+    m_CopyQueue = nullptr;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateRootSignature(RootSignature** PRootSignature, 
+                                                    const RootSignatureCreateInfo& CreateInfo)
+{
+    D3D12_ROOT_SIGNATURE_DESC RootSigDesc = { };
+    D3D12_ROOT_PARAMETER DescriptorTableLayout;
+    
+    DescriptorTableLayout.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+
+    D3D12_DESCRIPTOR_RANGE SrvRange;
+    D3D12_DESCRIPTOR_RANGE CbvRange;
+    D3D12_DESCRIPTOR_RANGE UavRange;
+    D3D12_DESCRIPTOR_RANGE SamplerRange;
+
+    SrvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    CbvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+    UavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    SamplerRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+
+    DescriptorTableLayout.DescriptorTable.pDescriptorRanges;
+    DescriptorTableLayout.DescriptorTable.NumDescriptorRanges;
+    
+    return SResult_OK;
 }
 } // Synthe

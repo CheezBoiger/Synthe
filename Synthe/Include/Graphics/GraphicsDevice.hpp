@@ -7,7 +7,8 @@
 #include "Graphics/GraphicsStructs.hpp"
 #include "Graphics/GraphicsCommandList.hpp"
 #include "Graphics/PipelineState.hpp"
-
+#include "Graphics/GraphicsResource.hpp"
+#include "Graphics/GraphicsResourceView.hpp"
 
 namespace Synthe {
 
@@ -291,12 +292,22 @@ public:
     //! Create a Root signature that defines the layout of the descriptor 
     //! and resource layouts to be used for a given pipeline state.
     //!
-    //! \param OutHandle
+    //! \param PRootSignature
     //! \param CreateInfo
-    //! \return SResult_OK if the function succeeds, and OutHandle is stored. Any other code
-    //!         will output failure and no value is passed to OutHandle.
-    virtual ResultCode CreateRootSignature(GPUHandle** OutHandle,
+    //! \return SResult_OK if the function succeeds, and PRootSignature is stored. Any other code
+    //!         will output failure and no value is passed to RootSignature.
+    virtual ResultCode CreateRootSignature(RootSignature** PRootSignature,
                                            const RootSignatureCreateInfo& CreateInfo) 
+        { return SResult_NOT_IMPLEMENTED; }
+
+    //! Create Descriptor sets for the given array.
+    //!
+    //! \param NumDescriptorSets
+    //! \param OutDescriptorSets
+    //! \return SResult_OK if the function succeeds, and OutDescriptorSet is stored. Any other
+    //!         code will output failure and no value is passed to OutDescriptorSet.
+    virtual ResultCode CreateDescriptorSets(U32 NumDescriptorSets, 
+                                            DescriptorSet** OutDescriptorSets) 
         { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a Sampler for texture use.
@@ -309,5 +320,5 @@ protected:
 };
 
 
-GraphicsDevice* CreateDeviceD3D12();
+GraphicsDevice* GetDeviceD3D12();
 } // Synthe

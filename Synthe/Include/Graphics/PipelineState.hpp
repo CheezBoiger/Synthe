@@ -34,8 +34,16 @@ struct RayTracingPipelineStateCreateInfo
 };
 
 
+// Root Signature is the pipeline layout.
 struct RootSignatureCreateInfo
 {
-    
+};
+
+
+//! PipelineStateType object.
+class PipelineState
+{
+public:
+    virtual ~PipelineState() { }
 };
 } // Synthe

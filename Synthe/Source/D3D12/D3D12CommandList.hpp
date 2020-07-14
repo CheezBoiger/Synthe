@@ -48,12 +48,18 @@ public:
 
     void SetRenderTargets(U32 NumRTVs, GPUHandle* RTVHandles, GPUHandle* DepthStencil) override;
     
-    void SetViewports(U32 NumViewports) override;
+    void SetViewports(U32 NumViewports, const Viewport* PViewports) override;
+    void SetScissors(U32 NumScissors, const Scissor* PScissors) override;
 
     void ClearRenderTarget(GPUHandle RTV, 
                            ClearColorValue* ClearColor, 
                            U32 NumBounds, 
                            TargetBounds* Bounds) override;
+
+    void BindDescriptorSets(U32 NumSets, DescriptorSet* const* PDescriptorSets) override;
+    void SetPipelineState(PipelineStateType PipelineType, 
+                          PipelineState* PPipelineState,
+                          RootSignature* PRootSignature) override;
 
     void TransitionResourceIfNeeded(U32 NumHandles, GPUHandle* Descriptors, D3D12_RESOURCE_STATES* NeededStates);
 

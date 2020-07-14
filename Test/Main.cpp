@@ -75,7 +75,7 @@ int main(int c, char* argv[])
     PWindow->Initialize(u8"KITTY CAT  猫の愛 猫の愛 猫の愛 Cat", 0, 0, 1200, 800);
     PWindow->Show();
 
-    GraphicsDevice* PDevice = Synthe::CreateDeviceD3D12();
+    GraphicsDevice* PDevice = Synthe::GetDeviceD3D12();
 
     GraphicsDeviceConfig GraphicsDeviceConfiguration = { };
     SwapchainConfig SwapchainConfiguration = { };

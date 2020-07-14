@@ -115,6 +115,13 @@ enum GraphicsDeviceFlags
 };
 
 
+enum PipelineStateType
+{
+    PipelineStateType_GRAPHICS,
+    PipelineStateType_COMPUTE
+};
+
+
 //! Graphics device configuration info. This is to be used for initializing the
 //! device before use, to allow desired hardware or features.
 struct GraphicsDeviceConfig
@@ -276,4 +283,44 @@ struct RenderTargetViewCreateInfo
 };
 
 
+struct Viewport
+{
+    R32 X;
+    R32 Y;
+    R32 Width;
+    R32 Height;
+    R32 MinDepth;
+    R32 MaxDepth;
+};
+
+
+struct Scissor
+{
+    U32 Left;
+    U32 Right;
+    U32 Bottom;
+    U32 Top;
+    U32 Front;
+    U32 Back;
+};
+
+
+enum ShaderVisibility
+{
+    ShaderVisibility_VERTEX = (1 << 0),
+    ShaderVisibility_PIXEL = (1 << 1),
+    ShaderVisibility_DOMAIN = (1 << 2),
+    ShaderVisibility_HULL = (1 << 3),
+    ShaderVisibility_GEOMETRY = (1 << 4),
+    ShaderVisibility_ALL = 0xffffffff
+};
+
+
+enum DescriptorType
+{
+    DescriptorType_CONSTANT_BUFFER,
+    DescriptorType_SAMPLER,
+    DescriptorType_SHADER_RESOURCE_VIEW,
+    DescriptorType_UNORDERED_ACCESS_VIEW
+};
 } // Synthe
