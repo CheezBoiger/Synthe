@@ -61,8 +61,8 @@ private:
 class D3D12RootSignature : public RootSignature
 {
 public:
-    D3D12RootSignature() 
-        : m_RootSignature(nullptr) { }
+    D3D12RootSignature(ID3D12RootSignature* PRoot) 
+        : m_RootSignature(PRoot) { }
 
     ID3D12RootSignature* GetSignature() { return m_RootSignature; }
 private:

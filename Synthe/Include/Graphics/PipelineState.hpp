@@ -34,9 +34,26 @@ struct RayTracingPipelineStateCreateInfo
 };
 
 
+struct DescriptorLayoutInfo
+{ 
+    U32 NumDescriptors;
+    U32 BaseRegister;
+};
+
+
+struct DescriptorTableLayoutInfo
+{
+    DescriptorLayoutInfo Srv;
+    DescriptorLayoutInfo Cbv;
+    DescriptorLayoutInfo Uav;
+    DescriptorLayoutInfo Sampler;
+};
+
 // Root Signature is the pipeline layout.
 struct RootSignatureCreateInfo
-{
+{   
+    U32 NumDescriptorTables;
+    DescriptorTableLayoutInfo* LayoutInfos;
 };
 
 

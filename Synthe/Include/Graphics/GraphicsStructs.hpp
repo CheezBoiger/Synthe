@@ -46,6 +46,8 @@ enum GResult
     GResult_LOST_DEVICE,
     GResult_GPU_MEMORY_CORRUPTION,
     GResult_DEVICE_CREATION_FAILURE,
+    GResult_ROOT_SIGNATURE_CREATION_ERROR,
+    GResult_ROOT_SIGNATURE_SERIALIZATION_ERROR,
     GResult_UNKNOWN
 };
 
@@ -279,6 +281,191 @@ struct RenderTargetViewCreateInfo
         RTVTexture2DArrayInfo Texture2DArray;
         RTVTexture2DMSArrayInfo Texture2DMSArray;
         RTVTexture3DInfo Texture3D;
+    };
+};
+
+
+enum DSVViewDimension
+{
+    DSVViewDimension_TEXTURE2D,
+    DSVViewDimension_TEXTURE2D_ARRAY,
+    DSVViewDimension_TEXTURE1D,
+    DSVViewDimension_TEXTURE1D_ARRAY,
+    DSVViewDimension_TEXTURE2DMS,
+    DSVViewDimension_TEXTURE2DMS_ARRAY
+};
+
+
+struct DSVTexture1DInfo
+{
+    U32 MipSlice;
+};
+
+
+struct DSVTexture1DArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+    U32 MipSlice;
+};
+
+
+struct DSVTexture2DInfo
+{
+    U32 MipSlice;
+};
+
+
+struct DSVTexture2DMSArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+};
+
+
+struct DSVTexture2DArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+    U32 MipSlice;
+};
+
+
+struct DepthStencilViewCreateInfo
+{
+    GPUHandle ResourceHandle;
+    PixelFormat Format;
+    DSVViewDimension Dimension;
+    union 
+    {
+        DSVTexture1DInfo Texture1D;
+        DSVTexture1DArrayInfo Texture1DArray;
+        DSVTexture2DArrayInfo Texture2DArray;
+        DSVTexture2DInfo Texture2D;
+        DSVTexture2DMSArrayInfo Texture2DMSArray;
+    };
+};
+
+
+enum SRVViewDimension
+{
+    SrvViewDimension_BUFFER,
+    SrvViewDimension_TEXTURE1D,
+    SrvViewDimension_TEXTURE2D,
+    SrvViewDimension_TEXTURE2DMS,
+    SrvViewDimension_TEXTURE3D,
+    SrvViewDimension_TEXTURE2D_ARRAY,
+    SrvViewDimension_TEXTURE2DMS_ARRAY,
+    SrvViewDimension_TEXTURE1D_ARRAY,
+    SrvViewDimension_TEXTURE_CUBE,
+    SrvViewDimension_TEXTURE_CUBE_ARRAY,
+    SrvViewDimension_RAYTRACING_ACCELERATION_STRUCTURE
+};
+
+
+struct SrvTexture2DInfo
+{
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    U32 PlaneSlice;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvBufferInfo
+{
+    U64 FirstElement;
+    U32 Flags;
+    U32 NumElements;
+    U32 StructureByteStride;
+};
+
+
+struct SrvRayTracingAccelerationStructureInfo
+{
+    U64 Location;
+};
+
+
+struct SrvTexture1DInfo
+{
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvTexture1DArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvTexture2DMSArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+};
+
+
+struct SrvTexture2DArrayInfo
+{
+    U32 ArraySize;
+    U32 FirstArraySlice;
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    U32 PlaneSlice;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvTexture3DInfo
+{
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvTextureCubeInfo
+{
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct SrvTextureCubeArrayInfo
+{
+    U32 First2DArrayFace;
+    U32 MipLevels;
+    U32 MostDetailedMip;
+    U32 NumCubes;
+    R32 ResourceMinLODClamp;
+};
+
+
+struct ShaderResourceViewCreateInfo
+{
+    GPUHandle ResourceHandle;
+    PixelFormat Format;
+    SRVViewDimension Dimension;
+    union 
+    {
+        SrvBufferInfo Buffer;
+        SrvRayTracingAccelerationStructureInfo RaytracingAccelerationStructure;
+        SrvTexture1DInfo Texture1D;
+        SrvTexture1DArrayInfo Texture1DArray;
+        SrvTexture2DInfo Texture2D;
+        SrvTexture2DMSArrayInfo Texture2DMSArray;
+        SrvTexture2DArrayInfo Texture2DArray;
+        SrvTexture3DInfo Texture3D;
+        SrvTextureCubeInfo TextureCube;
+        SrvTextureCubeArrayInfo TextureCubeArray;
     };
 };
 

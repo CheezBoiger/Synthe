@@ -114,6 +114,12 @@ public:
     ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
                                       GPUHandle* OutHandle) override;
 
+    ResultCode CreateShaderResourceView(const ShaderResourceViewCreateInfo& SRV, 
+                                        GPUHandle* OutHandle) override;
+
+    ResultCode CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV,
+                                      GPUHandle* OutHandle) override;
+
     //!
     ResultCode CreateRootSignature(RootSignature** PRootSignature, const RootSignatureCreateInfo& CreateInfo) override;
 

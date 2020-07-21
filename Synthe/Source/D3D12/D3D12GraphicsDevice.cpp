@@ -9,6 +9,8 @@
 
 #include "D3D12Fence.hpp"
 
+#include <array>
+
 namespace Synthe {
 
 
@@ -822,24 +824,247 @@ void D3D12GraphicsDevice::ReleaseCopyQueue()
 ResultCode D3D12GraphicsDevice::CreateRootSignature(RootSignature** PRootSignature, 
                                                     const RootSignatureCreateInfo& CreateInfo)
 {
+    ResultCode OutResult = SResult_OK;
     D3D12_ROOT_SIGNATURE_DESC RootSigDesc = { };
-    D3D12_ROOT_PARAMETER DescriptorTableLayout;
     
-    DescriptorTableLayout.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-
-    D3D12_DESCRIPTOR_RANGE SrvRange;
-    D3D12_DESCRIPTOR_RANGE CbvRange;
-    D3D12_DESCRIPTOR_RANGE UavRange;
-    D3D12_DESCRIPTOR_RANGE SamplerRange;
-
-    SrvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    CbvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-    UavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    SamplerRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-
-    DescriptorTableLayout.DescriptorTable.pDescriptorRanges;
-    DescriptorTableLayout.DescriptorTable.NumDescriptorRanges;
+    std::vector<D3D12_ROOT_PARAMETER> DescriptorTableLayouts(CreateInfo.NumDescriptorTables);
+    std::vector<std::array<D3D12_DESCRIPTOR_RANGE, 4>> Ranges(CreateInfo.NumDescriptorTables);
     
+    for (U32 I = 0; I < DescriptorTableLayouts.size(); ++I)
+    {
+        DescriptorTableLayouts[I].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        D3D12_DESCRIPTOR_RANGE SrvRange;
+        D3D12_DESCRIPTOR_RANGE CbvRange;
+        D3D12_DESCRIPTOR_RANGE UavRange;
+        D3D12_DESCRIPTOR_RANGE SamplerRange;    
+
+        SrvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        CbvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+        UavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        SamplerRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+
+        U32 NumRanges = 0;
+        if (CreateInfo.LayoutInfos[I].Srv.NumDescriptors) 
+        {
+            SrvRange.NumDescriptors = CreateInfo.LayoutInfos[I].Srv.NumDescriptors;
+            SrvRange.BaseShaderRegister = CreateInfo.LayoutInfos[I].Srv.BaseRegister;
+            SrvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            SrvRange.RegisterSpace = 0;
+            Ranges[I][NumRanges++] = SrvRange;
+        }
+        DescriptorTableLayouts[I].DescriptorTable.pDescriptorRanges = Ranges[I].data();
+        DescriptorTableLayouts[I].DescriptorTable.NumDescriptorRanges = NumRanges;
+    }
+    
+
+    if (DescriptorTableLayouts.size()) 
+    {
+        RootSigDesc.NumParameters = CreateInfo.NumDescriptorTables;
+        RootSigDesc.pParameters = DescriptorTableLayouts.data();
+        ID3DBlob* PBlob = nullptr;
+        ID3DBlob* PErrorBlob = nullptr;
+        ID3D12RootSignature* PNativeRootSignature = nullptr;
+        
+        HRESULT Result = D3D12SerializeRootSignature(&RootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, 
+            &PBlob, &PErrorBlob);
+        
+        if (FAILED(Result)) 
+        {
+            OutResult = GResult_ROOT_SIGNATURE_SERIALIZATION_ERROR;
+        } 
+        else
+        {
+            Result = m_Device->CreateRootSignature(0, PBlob->GetBufferPointer(), PBlob->GetBufferSize(), 
+                __uuidof(ID3D12RootSignature), (void**)&PNativeRootSignature);
+            if (FAILED(Result))
+            {
+                OutResult = GResult_ROOT_SIGNATURE_CREATION_ERROR;
+            } 
+            else 
+            {
+                *PRootSignature = Malloc<D3D12RootSignature>(PNativeRootSignature);
+            }
+        }
+        if (PBlob) PBlob->Release();
+        if (PErrorBlob) PErrorBlob->Release();
+    }
+    return OutResult;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateShaderResourceView(const ShaderResourceViewCreateInfo& SRV,
+                                                         GPUHandle* OutHandle)
+{
+    D3D12_SHADER_RESOURCE_VIEW_DESC Desc = { };
+    Desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    Desc.Format = GetCommonFormatToDXGIFormat(SRV.Format);
+    switch (SRV.Dimension)
+    {
+        case SrvViewDimension_BUFFER:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            Desc.Buffer.FirstElement = SRV.Buffer.FirstElement;
+            Desc.Buffer.Flags = (D3D12_BUFFER_SRV_FLAGS)SRV.Buffer.Flags;
+            Desc.Buffer.NumElements = SRV.Buffer.NumElements;
+            Desc.Buffer.StructureByteStride = SRV.Buffer.StructureByteStride;
+            break;
+        }
+        case SrvViewDimension_RAYTRACING_ACCELERATION_STRUCTURE:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+            Desc.RaytracingAccelerationStructure.Location = SRV.RaytracingAccelerationStructure.Location;
+            break;
+        }
+        case SrvViewDimension_TEXTURE1D:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+            Desc.Texture1D.MipLevels = SRV.Texture1D.MipLevels;
+            Desc.Texture1D.MostDetailedMip = SRV.Texture1D.MostDetailedMip;
+            Desc.Texture1D.ResourceMinLODClamp = SRV.Texture1D.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE1D_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+            Desc.Texture1DArray.ArraySize = SRV.Texture1DArray.ArraySize;
+            Desc.Texture1DArray.FirstArraySlice = SRV.Texture1DArray.FirstArraySlice;
+            Desc.Texture1DArray.MipLevels = SRV.Texture1DArray.MipLevels;
+            Desc.Texture1DArray.MostDetailedMip = SRV.Texture1DArray.MostDetailedMip;
+            Desc.Texture1DArray.ResourceMinLODClamp = SRV.Texture1DArray.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE2D:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            Desc.Texture2D.MipLevels = SRV.Texture2D.MipLevels;
+            Desc.Texture2D.MostDetailedMip = SRV.Texture2D.MostDetailedMip;
+            Desc.Texture2D.PlaneSlice = SRV.Texture2D.PlaneSlice;
+            Desc.Texture2D.ResourceMinLODClamp = SRV.Texture2D.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE2DMS:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+            Desc.Texture2DMS.UnusedField_NothingToDefine;
+            break;
+        }
+        case SrvViewDimension_TEXTURE2DMS_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+            Desc.Texture2DMSArray.ArraySize = SRV.Texture2DMSArray.ArraySize;
+            Desc.Texture2DMSArray.FirstArraySlice = SRV.Texture2DMSArray.FirstArraySlice;
+            break;
+        }
+        case SrvViewDimension_TEXTURE2D_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+            Desc.Texture2DArray.ArraySize = SRV.Texture2DArray.ArraySize;
+            Desc.Texture2DArray.FirstArraySlice = SRV.Texture2DArray.FirstArraySlice;
+            Desc.Texture2DArray.MipLevels = SRV.Texture2DArray.MipLevels;
+            Desc.Texture2DArray.MostDetailedMip = SRV.Texture2DArray.MostDetailedMip;
+            Desc.Texture2DArray.PlaneSlice = SRV.Texture2DArray.PlaneSlice;
+            Desc.Texture2DArray.ResourceMinLODClamp = SRV.Texture2DArray.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE3D:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+            Desc.Texture3D.MipLevels = SRV.Texture3D.MipLevels;
+            Desc.Texture3D.MostDetailedMip = SRV.Texture3D.MostDetailedMip;
+            Desc.Texture3D.ResourceMinLODClamp = SRV.Texture3D.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE_CUBE:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+            Desc.TextureCube.MipLevels = SRV.TextureCube.MipLevels;
+            Desc.TextureCube.MostDetailedMip = SRV.TextureCube.MostDetailedMip;
+            Desc.TextureCube.ResourceMinLODClamp = SRV.TextureCube.ResourceMinLODClamp;
+            break;
+        }
+        case SrvViewDimension_TEXTURE_CUBE_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+            Desc.TextureCubeArray.First2DArrayFace = SRV.TextureCubeArray.First2DArrayFace;
+            Desc.TextureCubeArray.MipLevels = SRV.TextureCubeArray.MipLevels;
+            Desc.TextureCubeArray.MostDetailedMip = SRV.TextureCubeArray.MostDetailedMip;
+            Desc.TextureCubeArray.NumCubes = SRV.TextureCubeArray.NumCubes;
+            Desc.TextureCubeArray.ResourceMinLODClamp = SRV.TextureCubeArray.ResourceMinLODClamp;
+            break;
+        }
+    }
+    ResourceState ResourceStateO;
+    D3D12MemoryManager::GetNativeResource(SRV.ResourceHandle, &ResourceStateO);
+    if (!ResourceStateO.PResource)
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(
+        DescriptorHeapType_CBV_SRV_UAV_UPLOAD);
+    D3D12_CPU_DESCRIPTOR_HANDLE Handle = Pool->CreateSrv(m_Device, Desc, ResourceStateO.PResource);
+    *OutHandle = Handle.ptr;
+    return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV,
+                                                       GPUHandle* OutHandle)
+{
+    D3D12_DEPTH_STENCIL_VIEW_DESC Desc = { };
+    Desc.Format = GetCommonFormatToDXGIFormat(DSV.Format);
+    switch (DSV.Dimension)
+    {
+        case DSVViewDimension_TEXTURE1D:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+            Desc.Texture1D.MipSlice = DSV.Texture1D.MipSlice;
+            break;
+        }
+        case DSVViewDimension_TEXTURE1D_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+            Desc.Texture1DArray.ArraySize = DSV.Texture1DArray.ArraySize;
+            Desc.Texture1DArray.FirstArraySlice = DSV.Texture1DArray.FirstArraySlice;
+            Desc.Texture1DArray.MipSlice = DSV.Texture1DArray.MipSlice;
+            break;
+        }
+        case DSVViewDimension_TEXTURE2D:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+            Desc.Texture2D.MipSlice = DSV.Texture2D.MipSlice;
+            break;
+        }
+        case DSVViewDimension_TEXTURE2DMS:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+            Desc.Texture2DMS.UnusedField_NothingToDefine;
+            break;
+        }
+        case DSVViewDimension_TEXTURE2DMS_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+            Desc.Texture2DMSArray.ArraySize = DSV.Texture2DMSArray.ArraySize;
+            Desc.Texture2DMSArray.FirstArraySlice = DSV.Texture2DMSArray.FirstArraySlice;
+            break;
+        }
+        case DSVViewDimension_TEXTURE2D_ARRAY:
+        {
+            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+            Desc.Texture2DArray.ArraySize = DSV.Texture2DArray.ArraySize;
+            Desc.Texture2DArray.FirstArraySlice = DSV.Texture2DArray.FirstArraySlice;
+            Desc.Texture2DArray.MipSlice = DSV.Texture2DArray.MipSlice;
+            break;
+        }
+    }
+    ResourceState RSO;
+    D3D12MemoryManager::GetNativeResource(DSV.ResourceHandle, &RSO);
+    if (!RSO.PResource)
+    {
+        return SResult_OBJECT_NOT_FOUND;
+    }
+    DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD);
+    D3D12_CPU_DESCRIPTOR_HANDLE Handle = Pool->CreateDsv(m_Device, Desc, RSO.PResource);
+    *OutHandle = Handle.ptr;
     return SResult_OK;
 }
 } // Synthe

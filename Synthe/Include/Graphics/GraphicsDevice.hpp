@@ -154,7 +154,8 @@ public:
                                       const ClearValue* PClearValue) { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a shader resource view for a given resource.
-    virtual ResultCode CreateShaderResourceView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateShaderResourceView(const ShaderResourceViewCreateInfo& SRV,
+                                                GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a constant buffer view for a given resource.
     virtual ResultCode CreateConstantBufferView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
@@ -173,7 +174,8 @@ public:
     //! \param OutHandle
     //! \return The resulf of the call. SResult_OK if the call was successfully executed, and OutHandle was
     //!         generated. False otherwise, and OutHandle will not be supplied.
-    virtual ResultCode CreateDepthStencilView(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV, 
+                                              GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
 
     //! Create an unordered access view for a given resource.
     //!

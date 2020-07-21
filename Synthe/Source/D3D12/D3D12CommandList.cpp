@@ -165,7 +165,7 @@ void D3D12GraphicsCommandList::BindDescriptorSets(U32 NumSets, DescriptorSet* co
 void D3D12GraphicsCommandList::SetPipelineState(PipelineStateType PipelineType,
                                                 PipelineState* PPipelineState,
                                                 RootSignature* PRootSignature)
-{
+{ 
     ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
     ID3D12RootSignature* Signature = static_cast<D3D12RootSignature*>(PRootSignature)->GetSignature();
     switch (PipelineType)

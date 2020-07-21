@@ -122,6 +122,17 @@ int main(int c, char* argv[])
     PDevice->CreateResource(&ResourceHandle, &CreateInfo, nullptr);
     PDevice->CreateResource(&ResourceHandle, &ImageInfo, nullptr);
 
+    ShaderResourceViewCreateInfo SrvInfo = { };
+    SrvInfo.Dimension = SrvViewDimension_TEXTURE2D;
+    SrvInfo.Format = GFormat_R8G8B8A8_UNORM;
+    SrvInfo.ResourceHandle = ResourceHandle;
+    SrvInfo.Texture2D.MipLevels = 1;
+    SrvInfo.Texture2D.MostDetailedMip = 0;
+    SrvInfo.Texture2D.PlaneSlice = 0;
+    SrvInfo.Texture2D.ResourceMinLODClamp = 0.0f;
+    GPUHandle SrvHandle;
+    PDevice->CreateShaderResourceView(SrvInfo, &SrvHandle);
+
     PDevice->DestroyResource(ResourceHandle);
 
     U64 MemoryBytes = PDevice->GetCurrentUsedMemoryBytesInPool(MemoryType_TEXTURE) / MEM_1MB;
@@ -134,6 +145,7 @@ int main(int c, char* argv[])
         PDevice->CreateCommandList(CmdCi, &CmdList);
     }
 
+    RootSignature* PRootSig = nullptr;
     Fence* PFence = nullptr;
     PDevice->CreateFence(&PFence);
 
@@ -143,6 +155,16 @@ int main(int c, char* argv[])
     CmdSi.QueueToSubmit = SubmitQueue_GRAPHICS;
     CmdSi.NumSignalFences = 1;
     CmdSi.SignalFences = &PFence;
+    
+    {
+        RootSignatureCreateInfo RSCreateInfo = { };
+        DescriptorTableLayoutInfo Layout = { };
+        Layout.Srv.NumDescriptors = 2;
+        Layout.Srv.BaseRegister = 0;
+        RSCreateInfo.NumDescriptorTables = 1;
+        RSCreateInfo.LayoutInfos = &Layout;
+        PDevice->CreateRootSignature(&PRootSig, RSCreateInfo);
+    }
 
     while (!PWindow->GetShouldClose()) 
     {
