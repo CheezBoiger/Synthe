@@ -10,15 +10,13 @@
 namespace Synthe {
 
 
-ResultCode D3D12DescriptorSet::Update(const DescriptorSetCreateInfo& Info)
+ResultCode D3D12DescriptorSet::Update(const DescriptorSetUpdateInfo& Info)
 {
     ID3D12Device* PDevice = static_cast<D3D12GraphicsDevice*>(GetDeviceD3D12())->GetNative();
     DescriptorPool* CBVSRVUAVPool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV);
     DescriptorPool* SamplerPool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER);
-
     U64 CBVSRVUAVAlignment = CBVSRVUAVPool->GetAlignmentSizeInBytes();
     U64 SamplerAlignment = SamplerPool->GetAlignmentSizeInBytes();
-
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> CBVInfos;
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> SRVInfos;
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> UAVInfos;
@@ -60,12 +58,8 @@ ResultCode D3D12DescriptorSet::Update(const DescriptorSetCreateInfo& Info)
         }
     }
 
-    CBVSRVUAVPool->AllocateDescriptorTable(&m_TableUpload, 
-        (CBVInfos.size() + SRVInfos.size() + UAVInfos.size()) * CBVSRVUAVAlignment);
-    SamplerPool->AllocateDescriptorTable(&m_SamplerTableUpload, SamplerInfos.size() * SamplerAlignment);
-
     {
-        D3D12_CPU_DESCRIPTOR_HANDLE OffsetAddress = m_TableUpload.StartingAddress;
+        D3D12_CPU_DESCRIPTOR_HANDLE OffsetAddress = TableUpload.StartingAddress;
         CBVSRVUAVPool->CopyDescriptorsRange(PDevice, SRVInfos.size(), SRVInfos.data(), OffsetAddress);
         OffsetAddress.ptr += SRVInfos.size() + CBVSRVUAVAlignment;
         CBVSRVUAVPool->CopyDescriptorsRange(PDevice, CBVInfos.size(), CBVInfos.data(), OffsetAddress);
@@ -75,7 +69,7 @@ ResultCode D3D12DescriptorSet::Update(const DescriptorSetCreateInfo& Info)
 
     {
         SamplerPool->CopyDescriptorsRange(PDevice, SamplerInfos.size(), SamplerInfos.data(), 
-            m_SamplerTableUpload.StartingAddress);
+            SamplerTableUpload.StartingAddress);
     }
     return SResult_OK;
 }
@@ -87,11 +81,17 @@ void D3D12DescriptorSet::UploadToShaderVisibleHeap(ID3D12Device* PDevice, U32 Cu
         D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, CurrentBufferIndex);
     DescriptorPool* SamplerPool =
         D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER, CurrentBufferIndex);
-    Pool->CopyDescriptorsRangeConsecutive(PDevice, m_TableUpload.StartingAddress, 
-        m_TableUpload.TableSizeInBytes / Pool->GetAlignmentSizeInBytes(), 
-        m_GPUTable.StartingAddress);
-    SamplerPool->CopyDescriptorsRangeConsecutive(PDevice, m_SamplerTableUpload.StartingAddress,
-        m_SamplerTableUpload.TableSizeInBytes / SamplerPool->GetAlignmentSizeInBytes(), 
-        m_GPUSamplerTable.StartingAddress);
+    Pool->CopyDescriptorsRangeConsecutive(PDevice, TableUpload.StartingAddress, 
+        TableUpload.TableSizeInBytes / Pool->GetAlignmentSizeInBytes(), 
+        GPUTable.StartingAddress);
+    SamplerPool->CopyDescriptorsRangeConsecutive(PDevice, SamplerTableUpload.StartingAddress,
+        SamplerTableUpload.TableSizeInBytes / SamplerPool->GetAlignmentSizeInBytes(), 
+        GPUSamplerTable.StartingAddress);
+}
+
+
+ResultCode D3D12DescriptorSet::CleanUp()
+{
+    return SResult_OK;
 }
 } // Synthe

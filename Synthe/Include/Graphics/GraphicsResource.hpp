@@ -23,7 +23,7 @@ struct DescriptorInfo
 
 
 //! Create info for descriptor set.
-struct DescriptorSetCreateInfo
+struct DescriptorSetUpdateInfo
 {
     //! Descriptors to register to our descriptor set.
     DescriptorInfo* PDescriptors;
@@ -41,7 +41,7 @@ public:
     virtual ~DescriptorSet() { }
 
     //! Update the descriptor set with new implementations.
-    virtual ResultCode Update(const DescriptorSetCreateInfo& Info) { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode Update(const DescriptorSetUpdateInfo& Info) { return SResult_NOT_IMPLEMENTED; }
 
     //! Cleanup the descriptor set.
     virtual ResultCode CleanUp() { return SResult_NOT_IMPLEMENTED; }

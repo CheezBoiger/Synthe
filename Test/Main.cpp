@@ -132,6 +132,19 @@ int main(int c, char* argv[])
     SrvInfo.Texture2D.ResourceMinLODClamp = 0.0f;
     GPUHandle SrvHandle;
     PDevice->CreateShaderResourceView(SrvInfo, &SrvHandle);
+    
+    RootSignature* RootSig = nullptr;
+    DescriptorSet* PSet = nullptr;
+    {
+        RootSignatureLayoutInfo Ci = { };
+        DescriptorSetLayoutInfo DescLayout = { };
+        DescLayout.Srv.BaseRegister = 0;
+        DescLayout.Srv.NumDescriptors = 1;
+        Ci.LayoutInfos = &DescLayout;
+        Ci.NumDescriptorTables = 1;
+        PDevice->CreateRootSignature(&RootSig, Ci);
+        PDevice->AllocateDescriptorSets(1, &PSet, &DescLayout);
+    }
 
     PDevice->DestroyResource(ResourceHandle);
 
@@ -157,8 +170,8 @@ int main(int c, char* argv[])
     CmdSi.SignalFences = &PFence;
     
     {
-        RootSignatureCreateInfo RSCreateInfo = { };
-        DescriptorTableLayoutInfo Layout = { };
+        RootSignatureLayoutInfo RSCreateInfo = { };
+        DescriptorSetLayoutInfo Layout = { };
         Layout.Srv.NumDescriptors = 2;
         Layout.Srv.BaseRegister = 0;
         RSCreateInfo.NumDescriptorTables = 1;

@@ -154,7 +154,7 @@ void D3D12GraphicsCommandList::BindDescriptorSets(U32 NumSets, DescriptorSet* co
         const D3D12DescriptorSet* Set = static_cast<const D3D12DescriptorSet*>(PDescriptorSets[I]);
         D3D12_GPU_DESCRIPTOR_HANDLE DescriptorTableGPUAddress = 
             D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD)->GetGPUAddressFromCPUAddress(
-                Set->GetTable().StartingAddress);
+                Set->GPUTable.StartingAddress);
         
         m_CommandLists[m_CurrentRecordingIdx].PCmdList->SetGraphicsRootDescriptorTable(
             I, DescriptorTableGPUAddress);

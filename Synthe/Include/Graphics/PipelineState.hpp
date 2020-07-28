@@ -20,12 +20,17 @@ struct ShaderModule
 
 struct GraphicsPipelineStateCreateInfo
 {
-    
+    ShaderModule* PVertexShader;
+    ShaderModule* PHullShader;
+    ShaderModule* PDomainShader;
+    ShaderModule* PGeometryShader;
+    ShaderModule* PPixelShader;
 };
 
 
 struct ComputePipelineStateCreateInfo
 {
+    ShaderModule* PComputeShader;
 };
 
 
@@ -41,7 +46,7 @@ struct DescriptorLayoutInfo
 };
 
 
-struct DescriptorTableLayoutInfo
+struct DescriptorSetLayoutInfo
 {
     DescriptorLayoutInfo Srv;
     DescriptorLayoutInfo Cbv;
@@ -50,10 +55,10 @@ struct DescriptorTableLayoutInfo
 };
 
 // Root Signature is the pipeline layout.
-struct RootSignatureCreateInfo
+struct RootSignatureLayoutInfo
 {   
     U32 NumDescriptorTables;
-    DescriptorTableLayoutInfo* LayoutInfos;
+    DescriptorSetLayoutInfo* LayoutInfos;
 };
 
 

@@ -822,7 +822,7 @@ void D3D12GraphicsDevice::ReleaseCopyQueue()
 
 
 ResultCode D3D12GraphicsDevice::CreateRootSignature(RootSignature** PRootSignature, 
-                                                    const RootSignatureCreateInfo& CreateInfo)
+                                                    const RootSignatureLayoutInfo& CreateInfo)
 {
     ResultCode OutResult = SResult_OK;
     D3D12_ROOT_SIGNATURE_DESC RootSigDesc = { };
@@ -851,6 +851,22 @@ ResultCode D3D12GraphicsDevice::CreateRootSignature(RootSignature** PRootSignatu
             SrvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
             SrvRange.RegisterSpace = 0;
             Ranges[I][NumRanges++] = SrvRange;
+        }
+        if (CreateInfo.LayoutInfos[I].Cbv.NumDescriptors)
+        {
+            CbvRange.NumDescriptors = CreateInfo.LayoutInfos[I].Cbv.NumDescriptors;
+            CbvRange.BaseShaderRegister = CreateInfo.LayoutInfos[I].Cbv.BaseRegister;
+            CbvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            CbvRange.RegisterSpace = 0;
+            Ranges[I][NumRanges++] = CbvRange;
+        }
+        if (CreateInfo.LayoutInfos[I].Uav.NumDescriptors)
+        {
+            UavRange.NumDescriptors = CreateInfo.LayoutInfos[I].Uav.NumDescriptors;
+            UavRange.BaseShaderRegister = CreateInfo.LayoutInfos[I].Uav.BaseRegister;
+            UavRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            UavRange.RegisterSpace = 0;
+            Ranges[I][NumRanges++] = UavRange;
         }
         DescriptorTableLayouts[I].DescriptorTable.pDescriptorRanges = Ranges[I].data();
         DescriptorTableLayouts[I].DescriptorTable.NumDescriptorRanges = NumRanges;
@@ -1065,6 +1081,31 @@ ResultCode D3D12GraphicsDevice::CreateDepthStencilView(const DepthStencilViewCre
     DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD);
     D3D12_CPU_DESCRIPTOR_HANDLE Handle = Pool->CreateDsv(m_Device, Desc, RSO.PResource);
     *OutHandle = Handle.ptr;
+    return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::AllocateDescriptorSets(U32 NumDescriptorSets, DescriptorSet** POutSets,
+    DescriptorSetLayoutInfo* PLayouts)
+{
+    DescriptorPool* CBVSRVUAVPool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV);
+    DescriptorPool* SamplerPool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER);
+    U64 CBVSRVUAVAlignment = CBVSRVUAVPool->GetAlignmentSizeInBytes();
+    U64 SamplerAlignment = SamplerPool->GetAlignmentSizeInBytes();
+
+    for (U32 I = 0; I < NumDescriptorSets; ++I)
+    {
+        D3D12DescriptorSet* Set = Malloc<D3D12DescriptorSet>();
+        DescriptorSetLayoutInfo& Layout = PLayouts[I];
+        U64 SrvSize = static_cast<U64>(Layout.Srv.NumDescriptors);
+        U32 CbvSize = static_cast<U64>(Layout.Cbv.NumDescriptors);
+        U64 UavSize = static_cast<U64>(Layout.Uav.NumDescriptors);
+        U64 SamplerSize = static_cast<U64>(Layout.Sampler.NumDescriptors);
+        CBVSRVUAVPool->AllocateDescriptorTable(&Set->TableUpload, 
+            (SrvSize + CbvSize + UavSize) * CBVSRVUAVAlignment);
+        SamplerPool->AllocateDescriptorTable(&Set->SamplerTableUpload, SamplerSize * SamplerAlignment);
+        POutSets[I] = Set; 
+    }
     return SResult_OK;
 }
 } // Synthe

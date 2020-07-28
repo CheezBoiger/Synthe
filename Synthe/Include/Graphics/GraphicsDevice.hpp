@@ -299,7 +299,15 @@ public:
     //! \return SResult_OK if the function succeeds, and PRootSignature is stored. Any other code
     //!         will output failure and no value is passed to RootSignature.
     virtual ResultCode CreateRootSignature(RootSignature** PRootSignature,
-                                           const RootSignatureCreateInfo& CreateInfo) 
+                                           const RootSignatureLayoutInfo& CreateInfo) 
+        { return SResult_NOT_IMPLEMENTED; }
+
+    //! Destroy a root signature.
+    //!
+    //! \param PRootSignature
+    //! \return SResult_OK if the function succeeds., and PRootSignature is assigned to nullptr.
+    //!         Any other code will output failutre and no value passed to PRootSignature.
+    virtual ResultCode DestroyRootSignature(RootSignature** PRootSignature)
         { return SResult_NOT_IMPLEMENTED; }
 
     //! Create Descriptor sets for the given array.
@@ -308,8 +316,9 @@ public:
     //! \param OutDescriptorSets
     //! \return SResult_OK if the function succeeds, and OutDescriptorSet is stored. Any other
     //!         code will output failure and no value is passed to OutDescriptorSet.
-    virtual ResultCode CreateDescriptorSets(U32 NumDescriptorSets, 
-                                            DescriptorSet** OutDescriptorSets) 
+    virtual ResultCode AllocateDescriptorSets(U32 NumDescriptorSets, 
+                                              DescriptorSet** OutDescriptorSets,
+                                              DescriptorSetLayoutInfo* PLayouts) 
         { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a Sampler for texture use.

@@ -113,15 +113,21 @@ public:
     //!
     ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
                                       GPUHandle* OutHandle) override;
-
+    //!
     ResultCode CreateShaderResourceView(const ShaderResourceViewCreateInfo& SRV, 
                                         GPUHandle* OutHandle) override;
 
+    //!
     ResultCode CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV,
                                       GPUHandle* OutHandle) override;
 
     //!
-    ResultCode CreateRootSignature(RootSignature** PRootSignature, const RootSignatureCreateInfo& CreateInfo) override;
+    ResultCode CreateRootSignature(RootSignature** PRootSignature, const RootSignatureLayoutInfo& CreateInfo) override;
+
+    //! 
+    ResultCode AllocateDescriptorSets(U32 NumDescriptorSets, 
+                                      DescriptorSet** PDescriptorSets,
+                                      DescriptorSetLayoutInfo* PLayouts) override;
 
     //! Begin the frame. This will prepare resources, along with prepare command lists and 
     //! other buffering resources.
@@ -180,32 +186,32 @@ private:
     void ReleaseCopyQueue();
 
     //! Our buffering resources.
-    std::vector<BufferingResource>      m_BufferingResources;
+    std::vector<BufferingResource>              m_BufferingResources;
 
     //! 
-    ID3D12CommandQueue*                 m_GraphicsQueue;
+    ID3D12CommandQueue*                         m_GraphicsQueue;
     
     //! Asynchronous queue should any be available.
-    ID3D12CommandQueue*                 m_AsyncQueue;
+    ID3D12CommandQueue*                         m_AsyncQueue;
 
     //! Copy queue should any be available.
-    ID3D12CommandQueue*                 m_CopyQueue;
+    ID3D12CommandQueue*                         m_CopyQueue;
 
-    U32                                 m_BufferIndex;
+    U32                                         m_BufferIndex;
 
-    std::map<GPUHandle, D3D12DescriptorSet*> m_DescriptorSets;
-    std::list<D3D12GraphicsCommandList*> m_PerFrameCommandLists;
-    std::unordered_map<GPUHandle, D3D12Fence*> m_Fences;
-    D3D12GraphicsCommandList           m_BackbufferCommandList;
+    std::map<GPUHandle, D3D12DescriptorSet*>    m_DescriptorSets;
+    std::list<D3D12GraphicsCommandList*>        m_PerFrameCommandLists;
+    std::unordered_map<GPUHandle, D3D12Fence*>  m_Fences;
+    D3D12GraphicsCommandList                    m_BackbufferCommandList;
 
-    ID3D12Device*                       m_Device;
-    ID3D12Device5*                      m_AdvDevice;
-    IDXGIFactory2*                      m_PFactory;
-    IDXGIAdapter1*                      m_Adapter;
+    ID3D12Device*                               m_Device;
+    ID3D12Device5*                              m_AdvDevice;
+    IDXGIFactory2*                              m_PFactory;
+    IDXGIAdapter1*                              m_Adapter;
 #if DIRECTML_COMPATIBLE
-    IDMLDevice*                         m_MLDevice;
+    IDMLDevice*                                 m_MLDevice;
 #endif
-    D3D12Swapchain                      m_Swapchain;
-    D3D12_RESOURCE_HEAP_TIER            m_ResourceHeapTier;
+    D3D12Swapchain                              m_Swapchain;
+    D3D12_RESOURCE_HEAP_TIER                    m_ResourceHeapTier;
 };
 } // Synthe
