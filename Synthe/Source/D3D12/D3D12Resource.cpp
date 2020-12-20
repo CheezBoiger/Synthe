@@ -70,6 +70,7 @@ ResultCode D3D12DescriptorSet::Update(const DescriptorSetUpdateInfo& Info)
     {
         SamplerPool->CopyDescriptorsRange(PDevice, SamplerInfos.size(), SamplerInfos.data(), 
             SamplerTableUpload.StartingAddress);
+        m_NeedsFlushToGPU = true;
     }
     return SResult_OK;
 }
@@ -77,21 +78,30 @@ ResultCode D3D12DescriptorSet::Update(const DescriptorSetUpdateInfo& Info)
 
 void D3D12DescriptorSet::UploadToShaderVisibleHeap(ID3D12Device* PDevice, U32 CurrentBufferIndex)
 {
-    DescriptorPool* Pool = 
-        D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, CurrentBufferIndex);
-    DescriptorPool* SamplerPool =
-        D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER, CurrentBufferIndex);
-    Pool->CopyDescriptorsRangeConsecutive(PDevice, TableUpload.StartingAddress, 
-        TableUpload.TableSizeInBytes / Pool->GetAlignmentSizeInBytes(), 
-        GPUTable.StartingAddress);
-    SamplerPool->CopyDescriptorsRangeConsecutive(PDevice, SamplerTableUpload.StartingAddress,
-        SamplerTableUpload.TableSizeInBytes / SamplerPool->GetAlignmentSizeInBytes(), 
-        GPUSamplerTable.StartingAddress);
+    if (NeedsToBeFlushed()) 
+    {
+        DescriptorPool* Pool = 
+            D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, CurrentBufferIndex);
+        DescriptorPool* SamplerPool =
+            D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_SAMPLER, CurrentBufferIndex);
+
+        Pool->CopyDescriptorsRangeConsecutive(PDevice, TableUpload.StartingAddress, 
+            TableUpload.TableSizeInBytes / Pool->GetAlignmentSizeInBytes(), 
+            GPUTable.StartingAddress);
+
+        SamplerPool->CopyDescriptorsRangeConsecutive(PDevice, SamplerTableUpload.StartingAddress,
+            SamplerTableUpload.TableSizeInBytes / SamplerPool->GetAlignmentSizeInBytes(), 
+            GPUSamplerTable.StartingAddress);
+    }
+
+    m_NeedsFlushToGPU = false;
 }
 
 
-ResultCode D3D12DescriptorSet::CleanUp()
+ResultCode D3D12DescriptorSet::Release()
 {
+    DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV);
+    
     return SResult_OK;
 }
 } // Synthe

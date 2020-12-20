@@ -106,18 +106,19 @@ public:
     ResultCode SubmitCommandLists(U32 NumSubmits, 
                                   const CommandListSubmitInfo* PSubmitInfos) override;
 
-    //!
+    //! Create a D3D12 native command list.
     ResultCode CreateCommandList(CommandListCreateInfo& Info, 
                                  GraphicsCommandList** PList) override;
 
-    //!
+    //! Create a D3D12 render target view. This will be used for all render targets.
     ResultCode CreateRenderTargetView(const RenderTargetViewCreateInfo& RTV, 
                                       GPUHandle* OutHandle) override;
-    //!
+
+    //! Create a D3D12 shader resource view. This will be used for all shader resource view targets.
     ResultCode CreateShaderResourceView(const ShaderResourceViewCreateInfo& SRV, 
                                         GPUHandle* OutHandle) override;
 
-    //!
+    //! Create a D3D12 depth stencil view. This will be used for all depth stencil targets.
     ResultCode CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV,
                                       GPUHandle* OutHandle) override;
 

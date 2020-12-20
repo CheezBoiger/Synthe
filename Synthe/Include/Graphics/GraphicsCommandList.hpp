@@ -104,5 +104,8 @@ public:
 
     //! Copy a Resource to another Resource.
     virtual void CopyResource(Resource* PDest, Resource* PSrc) { }
+
+    //! Dispatch ray tracing pipeline.
+    virtual void DispatchRays() { }
 };
 } // Synth

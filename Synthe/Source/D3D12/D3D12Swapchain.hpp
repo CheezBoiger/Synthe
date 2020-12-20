@@ -27,8 +27,10 @@ struct FrameResource
 
     //! Default constructor method for the Rtv Image.
     FrameResource(ID3D12Resource* PImage = nullptr) 
-        : PSwapchainImage(PImage)
-        , ImageRTV(BASE_CPU_DESCRIPTOR_ALLOC) { }
+        : PSwapchainImage   (PImage)
+        , ImageRTV          (BASE_CPU_DESCRIPTOR_ALLOC)
+        , ResourceHandle    (SYNTHE_GPU_NO_HANDLE) 
+    { }
 };
 
 

@@ -67,5 +67,11 @@ class PipelineState
 {
 public:
     virtual ~PipelineState() { }
+    
+private:
+    //! Metadata stored for this pipeline state.
+    struct {
+        DescriptorSetLayoutInfo DescriptorSetLayoutMeta;    
+    } m_Metadata;
 };
 } // Synthe

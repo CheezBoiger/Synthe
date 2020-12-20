@@ -172,7 +172,7 @@ public:
     //! Create a depth stencil view handle for a given resource.
     //!
     //! \param OutHandle
-    //! \return The resulf of the call. SResult_OK if the call was successfully executed, and OutHandle was
+    //! \return The result of the call. SResult_OK if the call was successfully executed, and OutHandle was
     //!         generated. False otherwise, and OutHandle will not be supplied.
     virtual ResultCode CreateDepthStencilView(const DepthStencilViewCreateInfo& DSV, 
                                               GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
@@ -199,7 +199,11 @@ public:
     //! \return The graphics device features of this initialized device.
     GraphicsDeviceFeatures GetDeviceFeatures() const { return m_Features; }
 
+    //! 
     virtual ResultCode CreateBuffer(GPUHandle* OutHandle) { return SResult_NOT_IMPLEMENTED; }
+
+    //! 
+    virtual ResultCode CreateImage() { return SResult_NOT_IMPLEMENTED; }
 
     //! Begin next buffer for rendering.
     //!

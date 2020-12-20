@@ -34,7 +34,7 @@ public:
     //! Get the current backbuffer render target view.
     //! 
     //! \return The GPU handle that corresponds to the current back buffer Render Target View.
-    virtual GPUHandle GetCurrentBackBufferRTV() { return GPU_NO_HANDLE; }
+    virtual GPUHandle GetCurrentBackBufferRTV() { return SYNTHE_GPU_NO_HANDLE; }
 
 protected:
     SwapchainConfig m_Config;

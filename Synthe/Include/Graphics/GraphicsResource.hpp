@@ -44,13 +44,25 @@ public:
     virtual ResultCode Update(const DescriptorSetUpdateInfo& Info) { return SResult_NOT_IMPLEMENTED; }
 
     //! Cleanup the descriptor set.
-    virtual ResultCode CleanUp() { return SResult_NOT_IMPLEMENTED; }
+    virtual ResultCode Release() { return SResult_NOT_IMPLEMENTED; }
+
+private:
+};
+
+
+enum ResourceType
+{
+    ResourceType_BUFFER,
+    ResourceType_IMAGE
 };
 
 
 class Resource
 {
 public:
+
+protected:
+    ResourceType m_ResourceType;
 };
 
 

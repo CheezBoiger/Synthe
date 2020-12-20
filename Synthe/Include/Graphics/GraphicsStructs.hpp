@@ -9,7 +9,7 @@ namespace Synthe {
 
 
 typedef U64 GPUHandle;
-#define GPU_NO_HANDLE 0ULL
+#define SYNTHE_GPU_NO_HANDLE 0ULL
 
 
 enum GraphicsAPI
@@ -267,6 +267,7 @@ struct RTVTexture2DMSArrayInfo
 };
 
 
+//! Render Target View information.
 struct RenderTargetViewCreateInfo
 {
     GPUHandle ResourceHandle;
@@ -331,6 +332,7 @@ struct DSVTexture2DArrayInfo
 };
 
 
+//! Depth Stencil View information.
 struct DepthStencilViewCreateInfo
 {
     GPUHandle ResourceHandle;
@@ -449,6 +451,7 @@ struct SrvTextureCubeArrayInfo
 };
 
 
+//! Shader Resource View information.
 struct ShaderResourceViewCreateInfo
 {
     GPUHandle ResourceHandle;
@@ -466,6 +469,17 @@ struct ShaderResourceViewCreateInfo
         SrvTexture3DInfo Texture3D;
         SrvTextureCubeInfo TextureCube;
         SrvTextureCubeArrayInfo TextureCubeArray;
+    };
+};
+
+
+//! Unordered Access View information.
+struct UnorderedAccessViewCreateInfo
+{
+    GPUHandle ResourceHandle;
+    PixelFormat Format;
+    union
+    {
     };
 };
 

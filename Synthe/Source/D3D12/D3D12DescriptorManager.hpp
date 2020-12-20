@@ -16,7 +16,7 @@ typedef U64 DescriptorKeyID;
 class D3D12DescriptorSet;
 
 
-//! Descriptor table is an object that holds the handle to a base address of a descriptor heap,
+//! Descriptor table is an object that holds the handle to a base address of an array of descriptors,
 //! along with the size of the table. These are used to represent arrays of descriptors to be 
 //! bound on render command recording.
 struct DescriptorTable
@@ -29,7 +29,7 @@ struct DescriptorTable
     //! The starting CPU address of the descriptor table.
     D3D12_CPU_DESCRIPTOR_HANDLE StartingAddress;
     
-    //! The end CPU address of the descriptor table.
+    //! The total size of the descriptor table in bytes.
     UINT64 TableSizeInBytes;
 };
 

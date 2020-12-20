@@ -6,6 +6,7 @@
 #include "D3D12DescriptorManager.hpp"
 #include "D3D12Resource.hpp"
 #include "D3D12MemoryManager.hpp"
+#include "D3D12ResourceView.hpp"
 
 #include "D3D12Fence.hpp"
 
@@ -340,18 +341,12 @@ ResultCode D3D12GraphicsDevice::CleanUp()
 {
     m_Swapchain.CleanUp();
     CleanUpFences();
-    if (m_GraphicsQueue)
-        m_GraphicsQueue->Release();
-    if (m_AsyncQueue)
-        m_AsyncQueue->Release();
-    if (m_CopyQueue)
-        m_CopyQueue->Release();
-    if (m_PFactory)
-        m_PFactory->Release();
-    if (m_Device)
-        m_Device->Release();
-    if (m_MLDevice)
-        m_MLDevice->Release();
+    if (m_GraphicsQueue) m_GraphicsQueue->Release();
+    if (m_AsyncQueue) m_AsyncQueue->Release();
+    if (m_CopyQueue) m_CopyQueue->Release();
+    if (m_PFactory) m_PFactory->Release();
+    if (m_Device) m_Device->Release();
+    if (m_MLDevice) m_MLDevice->Release();
     return SResult_OK;
 }
 
@@ -458,6 +453,7 @@ void D3D12GraphicsDevice::Begin()
     // Update our backbuffer commandlist too.
     m_BackbufferCommandList.SetCurrentIdx(m_BufferIndex);
 
+    // Upload all descriptors to their GPU descriptor tables.
     D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV, m_BufferIndex)->ResetPool();
     for (std::pair<const GPUHandle, D3D12DescriptorSet*>& Set : m_DescriptorSets)
     {
@@ -470,13 +466,16 @@ void D3D12GraphicsDevice::End()
 {
     BufferingResource& Buffer = m_BufferingResources[m_BufferIndex];
     m_GraphicsQueue->Signal(Buffer.PWaitFence, Buffer.FenceWaitValue);
+
     // Next frame to work on.
     m_BufferIndex = m_Swapchain.GetCurrentFrameIndex() % static_cast<U32>(m_BufferingResources.size());
+
     if (Buffer.PWaitFence->GetCompletedValue() < Buffer.FenceWaitValue)
     {
         Buffer.PWaitFence->SetEventOnCompletion(Buffer.FenceWaitValue, Buffer.FenceEventWait);
         WaitForSingleObject(Buffer.FenceEventWait, INFINITE);
     }
+
     Buffer.FenceWaitValue += 1;
 }
 
@@ -637,17 +636,21 @@ ResultCode D3D12GraphicsDevice::SubmitCommandLists(U32 NumSubmits,
                 Queue = m_GraphicsQueue;
                 break;
         } 
+
         for (U32 CmdIdx = 0; CmdIdx < Info.NumCommandLists; ++CmdIdx)
         {
             CmdListBuffer[CmdIdx] = static_cast<D3D12GraphicsCommandList*>(
                 Info.PCmdLists[CmdIdx])->GetNative();
         }
+
         for (U32 I = 0; I < Info.NumWaitFences; ++I)
         {
             D3D12Fence* PFence = static_cast<D3D12Fence*>(Info.WaitFences[I]);
             Queue->Wait(PFence->GetNativeFence(), PFence->GetCurrentValue());   
         }
+
         Queue->ExecuteCommandLists(Info.NumCommandLists, CmdListBuffer);
+
         for (U32 I = 0; I < Info.NumSignalFences; ++I)
         {
             D3D12Fence* PFence = static_cast<D3D12Fence*>(Info.SignalFences[I]);
@@ -708,54 +711,9 @@ ResultCode D3D12GraphicsDevice::CreateRenderTargetView(const RenderTargetViewCre
                                                        GPUHandle* OutHandle)
 {
     D3D12_RENDER_TARGET_VIEW_DESC Desc = { };
-    Desc.Format = GetCommonFormatToDXGIFormat(RTV.Format);
-    switch (RTV.Dimension)
-    {
-        case RTVViewDimension_BUFFER:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_BUFFER;
-            Desc.Buffer.FirstElement = RTV.Buffer.FirstElement;
-            Desc.Buffer.NumElements = RTV.Buffer.NumElements;
-            break;
-        case RTVViewDimension_TEXTURE_1D:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
-            Desc.Texture1D.MipSlice = RTV.Texture1D.MipSlice;
-            break;
-        case RTVViewDimension_TEXTURE_2D:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-            Desc.Texture2D.MipSlice = RTV.Texture2D.MipSlice;
-            Desc.Texture2D.PlaneSlice = RTV.Texture2D.PlaneSlice;
-            break;
-        case RTVViewDimension_TEXTURE_1D_ARRAY:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
-            Desc.Texture1DArray.ArraySize = RTV.Texture1DArray.ArraySize;
-            Desc.Texture1DArray.FirstArraySlice = RTV.Texture1DArray.FirstArraySlice;
-            Desc.Texture1DArray.MipSlice = RTV.Texture1DArray.MipSlice;
-            break;
-        case RTVViewDimension_TEXTURE_2D_ARRAY:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-            Desc.Texture2DArray.ArraySize = RTV.Texture2DArray.ArraySize;
-            Desc.Texture2DArray.FirstArraySlice = RTV.Texture2DArray.FirstArraySlice;
-            Desc.Texture2DArray.MipSlice = RTV.Texture2DArray.MipSlice;
-            Desc.Texture2DArray.PlaneSlice = RTV.Texture2DArray.PlaneSlice;
-            break;
-        case RTVViewDimension_TEXTURE_2DMS_ARRAY:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-            Desc.Texture2DMSArray.ArraySize;
-            Desc.Texture2DMSArray.FirstArraySlice;
-            break;
-        case RTVViewDimension_TEXTURE_2DMS:
-            Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
-            Desc.Texture2DMS.UnusedField_NothingToDefine;
-            break;
-        case RTVViewDimension_TEXTURE_3D:
-            Desc.Texture3D.FirstWSlice = RTV.Texture3D.FirstWSlice;
-            Desc.Texture3D.MipSlice = RTV.Texture3D.MipSlice;
-            Desc.Texture3D.WSize = RTV.Texture3D.WSize;
-            break;
-        default:
-            // No proper dimension was set.
-            return SResult_INVALID_ARGS;
-    }
+    
+    GetRtvDescription(RTV, Desc);
+
     ResourceState ResourceStateO = { };
     D3D12MemoryManager::GetNativeResource(RTV.ResourceHandle, &ResourceStateO);
     if (!ResourceStateO.PResource)
@@ -912,109 +870,16 @@ ResultCode D3D12GraphicsDevice::CreateShaderResourceView(const ShaderResourceVie
                                                          GPUHandle* OutHandle)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC Desc = { };
-    Desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    Desc.Format = GetCommonFormatToDXGIFormat(SRV.Format);
-    switch (SRV.Dimension)
-    {
-        case SrvViewDimension_BUFFER:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            Desc.Buffer.FirstElement = SRV.Buffer.FirstElement;
-            Desc.Buffer.Flags = (D3D12_BUFFER_SRV_FLAGS)SRV.Buffer.Flags;
-            Desc.Buffer.NumElements = SRV.Buffer.NumElements;
-            Desc.Buffer.StructureByteStride = SRV.Buffer.StructureByteStride;
-            break;
-        }
-        case SrvViewDimension_RAYTRACING_ACCELERATION_STRUCTURE:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-            Desc.RaytracingAccelerationStructure.Location = SRV.RaytracingAccelerationStructure.Location;
-            break;
-        }
-        case SrvViewDimension_TEXTURE1D:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-            Desc.Texture1D.MipLevels = SRV.Texture1D.MipLevels;
-            Desc.Texture1D.MostDetailedMip = SRV.Texture1D.MostDetailedMip;
-            Desc.Texture1D.ResourceMinLODClamp = SRV.Texture1D.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE1D_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
-            Desc.Texture1DArray.ArraySize = SRV.Texture1DArray.ArraySize;
-            Desc.Texture1DArray.FirstArraySlice = SRV.Texture1DArray.FirstArraySlice;
-            Desc.Texture1DArray.MipLevels = SRV.Texture1DArray.MipLevels;
-            Desc.Texture1DArray.MostDetailedMip = SRV.Texture1DArray.MostDetailedMip;
-            Desc.Texture1DArray.ResourceMinLODClamp = SRV.Texture1DArray.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE2D:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            Desc.Texture2D.MipLevels = SRV.Texture2D.MipLevels;
-            Desc.Texture2D.MostDetailedMip = SRV.Texture2D.MostDetailedMip;
-            Desc.Texture2D.PlaneSlice = SRV.Texture2D.PlaneSlice;
-            Desc.Texture2D.ResourceMinLODClamp = SRV.Texture2D.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE2DMS:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-            Desc.Texture2DMS.UnusedField_NothingToDefine;
-            break;
-        }
-        case SrvViewDimension_TEXTURE2DMS_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-            Desc.Texture2DMSArray.ArraySize = SRV.Texture2DMSArray.ArraySize;
-            Desc.Texture2DMSArray.FirstArraySlice = SRV.Texture2DMSArray.FirstArraySlice;
-            break;
-        }
-        case SrvViewDimension_TEXTURE2D_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-            Desc.Texture2DArray.ArraySize = SRV.Texture2DArray.ArraySize;
-            Desc.Texture2DArray.FirstArraySlice = SRV.Texture2DArray.FirstArraySlice;
-            Desc.Texture2DArray.MipLevels = SRV.Texture2DArray.MipLevels;
-            Desc.Texture2DArray.MostDetailedMip = SRV.Texture2DArray.MostDetailedMip;
-            Desc.Texture2DArray.PlaneSlice = SRV.Texture2DArray.PlaneSlice;
-            Desc.Texture2DArray.ResourceMinLODClamp = SRV.Texture2DArray.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE3D:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-            Desc.Texture3D.MipLevels = SRV.Texture3D.MipLevels;
-            Desc.Texture3D.MostDetailedMip = SRV.Texture3D.MostDetailedMip;
-            Desc.Texture3D.ResourceMinLODClamp = SRV.Texture3D.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE_CUBE:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-            Desc.TextureCube.MipLevels = SRV.TextureCube.MipLevels;
-            Desc.TextureCube.MostDetailedMip = SRV.TextureCube.MostDetailedMip;
-            Desc.TextureCube.ResourceMinLODClamp = SRV.TextureCube.ResourceMinLODClamp;
-            break;
-        }
-        case SrvViewDimension_TEXTURE_CUBE_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
-            Desc.TextureCubeArray.First2DArrayFace = SRV.TextureCubeArray.First2DArrayFace;
-            Desc.TextureCubeArray.MipLevels = SRV.TextureCubeArray.MipLevels;
-            Desc.TextureCubeArray.MostDetailedMip = SRV.TextureCubeArray.MostDetailedMip;
-            Desc.TextureCubeArray.NumCubes = SRV.TextureCubeArray.NumCubes;
-            Desc.TextureCubeArray.ResourceMinLODClamp = SRV.TextureCubeArray.ResourceMinLODClamp;
-            break;
-        }
-    }
-    ResourceState ResourceStateO;
+    ResourceState ResourceStateO;    
+
+    GetSrvDescription(SRV, Desc);
     D3D12MemoryManager::GetNativeResource(SRV.ResourceHandle, &ResourceStateO);
+
     if (!ResourceStateO.PResource)
     {
         return SResult_OBJECT_NOT_FOUND;
     }
+
     DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(
         DescriptorHeapType_CBV_SRV_UAV_UPLOAD);
     D3D12_CPU_DESCRIPTOR_HANDLE Handle = Pool->CreateSrv(m_Device, Desc, ResourceStateO.PResource);
@@ -1027,60 +892,21 @@ ResultCode D3D12GraphicsDevice::CreateDepthStencilView(const DepthStencilViewCre
                                                        GPUHandle* OutHandle)
 {
     D3D12_DEPTH_STENCIL_VIEW_DESC Desc = { };
-    Desc.Format = GetCommonFormatToDXGIFormat(DSV.Format);
-    switch (DSV.Dimension)
-    {
-        case DSVViewDimension_TEXTURE1D:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
-            Desc.Texture1D.MipSlice = DSV.Texture1D.MipSlice;
-            break;
-        }
-        case DSVViewDimension_TEXTURE1D_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
-            Desc.Texture1DArray.ArraySize = DSV.Texture1DArray.ArraySize;
-            Desc.Texture1DArray.FirstArraySlice = DSV.Texture1DArray.FirstArraySlice;
-            Desc.Texture1DArray.MipSlice = DSV.Texture1DArray.MipSlice;
-            break;
-        }
-        case DSVViewDimension_TEXTURE2D:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-            Desc.Texture2D.MipSlice = DSV.Texture2D.MipSlice;
-            break;
-        }
-        case DSVViewDimension_TEXTURE2DMS:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
-            Desc.Texture2DMS.UnusedField_NothingToDefine;
-            break;
-        }
-        case DSVViewDimension_TEXTURE2DMS_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
-            Desc.Texture2DMSArray.ArraySize = DSV.Texture2DMSArray.ArraySize;
-            Desc.Texture2DMSArray.FirstArraySlice = DSV.Texture2DMSArray.FirstArraySlice;
-            break;
-        }
-        case DSVViewDimension_TEXTURE2D_ARRAY:
-        {
-            Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-            Desc.Texture2DArray.ArraySize = DSV.Texture2DArray.ArraySize;
-            Desc.Texture2DArray.FirstArraySlice = DSV.Texture2DArray.FirstArraySlice;
-            Desc.Texture2DArray.MipSlice = DSV.Texture2DArray.MipSlice;
-            break;
-        }
-    }
+
+    GetDsvDescription(DSV, Desc);
+
     ResourceState RSO;
     D3D12MemoryManager::GetNativeResource(DSV.ResourceHandle, &RSO);
+
     if (!RSO.PResource)
     {
         return SResult_OBJECT_NOT_FOUND;
     }
+
     DescriptorPool* Pool = D3D12DescriptorManager::GetDescriptorPool(DescriptorHeapType_CBV_SRV_UAV_UPLOAD);
     D3D12_CPU_DESCRIPTOR_HANDLE Handle = Pool->CreateDsv(m_Device, Desc, RSO.PResource);
     *OutHandle = Handle.ptr;
+
     return SResult_OK;
 }
 
@@ -1097,10 +923,10 @@ ResultCode D3D12GraphicsDevice::AllocateDescriptorSets(U32 NumDescriptorSets, De
     {
         D3D12DescriptorSet* Set = Malloc<D3D12DescriptorSet>();
         DescriptorSetLayoutInfo& Layout = PLayouts[I];
-        U64 SrvSize = static_cast<U64>(Layout.Srv.NumDescriptors);
-        U32 CbvSize = static_cast<U64>(Layout.Cbv.NumDescriptors);
-        U64 UavSize = static_cast<U64>(Layout.Uav.NumDescriptors);
-        U64 SamplerSize = static_cast<U64>(Layout.Sampler.NumDescriptors);
+        U64 SrvSize =       static_cast<U64>(Layout.Srv.NumDescriptors);
+        U32 CbvSize =       static_cast<U64>(Layout.Cbv.NumDescriptors);
+        U64 UavSize =       static_cast<U64>(Layout.Uav.NumDescriptors);
+        U64 SamplerSize =   static_cast<U64>(Layout.Sampler.NumDescriptors);
         CBVSRVUAVPool->AllocateDescriptorTable(&Set->TableUpload, 
             (SrvSize + CbvSize + UavSize) * CBVSRVUAVAlignment);
         SamplerPool->AllocateDescriptorTable(&Set->SamplerTableUpload, SamplerSize * SamplerAlignment);
