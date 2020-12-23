@@ -28,6 +28,8 @@ struct AllocationBlock
 };
 
 
+//! Allocate using wrapper function.
+//! Intended for special purposes.
 template<typename Type, typename... Arguments>
 static Type* Malloc(Arguments... Args)
 {
@@ -35,6 +37,7 @@ static Type* Malloc(Arguments... Args)
 }
 
 
+//! Allocate an array, wrapper function.
 template<typename Type, typename... Arguments>
 static Type* MallocArray(U64 Count)
 {
@@ -42,6 +45,7 @@ static Type* MallocArray(U64 Count)
 }
 
 
+//! Free function.
 template<typename Type>
 static void Free(Type* MPtr)
 {
@@ -49,6 +53,7 @@ static void Free(Type* MPtr)
 }
 
 
+//! Free array function.
 template<typename Type>
 static void FreeArray(Type* MPtr)
 {

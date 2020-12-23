@@ -60,11 +60,18 @@ public:
     void SetPipelineState(PipelineStateType PipelineType, 
                           PipelineState* PPipelineState,
                           RootSignature* PRootSignature) override;
-    void DrawInstanced() override;
-    void DrawIndexedInstanced() override;
+    void DrawInstanced(U32 VertexCountPerInstance,
+                       U32 InstanceCount,
+                       U32 StartVertexLocation,
+                       U32 StartInstanceLocation) override;
+    void DrawIndexedInstanced(U32 IndexCountPerInst,
+                              U32 InstanceCount,
+                              U32 StartIndexLocation,
+                              I32 BaseVertexLocation,
+                              U32 StartInstanceLocation) override;
     void Dispatch(U32 X, U32 Y, U32 Z) override;
-    void BindVertexBuffers(U32 NumSets, Resource* const* PBuffers, U32* Offsets) override;
-    void BindIndexBuffer(const Resource* PBuffer, U32 Offset) override;
+    void BindVertexBuffers(U32 NumSets, Resource* const* PBuffers, U32* Offsets) override { }
+    void BindIndexBuffer(const Resource* PBuffer, U32 Offset) override { }
 
     void TransitionResourceIfNeeded(U32 NumHandles, GPUHandle* Descriptors, D3D12_RESOURCE_STATES* NeededStates);
 

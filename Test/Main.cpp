@@ -96,6 +96,7 @@ int main(int c, char* argv[])
 
     GPUHandle ResourceHandle = 0;
     ResourceCreateInfo CreateInfo = { };
+    CreateInfo.Dimension = ResourceDimension_BUFFER;
     CreateInfo.Width = MEM_BYTES(256) * MEM_1MB;
     CreateInfo.Height = 1;
     CreateInfo.DepthOrArraySize = 1;
@@ -179,19 +180,25 @@ int main(int c, char* argv[])
         PDevice->CreateRootSignature(&PRootSig, RSCreateInfo);
     }
 
+    R32 C = 0.f;
     while (!PWindow->GetShouldClose()) 
     {
         PollEvents();
+    
+        // Render Begin Block.
         PDevice->Begin();
             GPUHandle BackbufferRTV = PDevice->GetSwapchain()->GetCurrentBackBufferRTV();
             CmdList->Begin();
                 CmdList->SetRenderTargets(1, &BackbufferRTV, nullptr);
-                ClearColorValue Clear = { 1.0f, 0.0f, 0.0f, 1.0f };
+                ClearColorValue Clear = { sinf((C = C + 0.01f)), cosf(C), 0.0f, 1.0f };
                 TargetBounds Bound = { 0, 0, 1920, 1080 };
                 CmdList->ClearRenderTarget(BackbufferRTV, &Clear, 1, &Bound);
+                CmdList->SetPipelineState(PipelineStateType_GRAPHICS, nullptr, nullptr);
+                CmdList->DrawInstanced(3, 1, 0, 0);
             CmdList->End();
             PDevice->SubmitCommandLists(1, &CmdSi);
             PDevice->Present();
+        // Render End Block.
         PDevice->End();
     }
 

@@ -31,7 +31,7 @@ ResultCode LinearAllocator::Allocate(AllocationBlock* Block, U64 SizeInBytes, U6
     {
         return SResult_INITIALIZATION_FAILURE;
     }
-
+    
     Block->StartAddress = m_Top;
     Block->SizeInBytes = SizeInBytes;
     Block->AllocationID = static_cast<U32>(m_NumAllocations++);

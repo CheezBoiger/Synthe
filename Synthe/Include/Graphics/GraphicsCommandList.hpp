@@ -61,10 +61,17 @@ public:
 
     //! Draws call that records an indexed draw (ordered vertex buffer.)
     //!
-    virtual void DrawIndexedInstanced() { }
+    virtual void DrawIndexedInstanced(U32 IndexCountPerInst, 
+                                      U32 InstanceCount, 
+                                      U32 StartIndexLocation, 
+                                      I32 BaseVertexLocation, 
+                                      U32 StartInstanceLocation) { }
 
     //! Draw call that records a draw command.
-    virtual void DrawInstanced() { }
+    virtual void DrawInstanced(U32 VertexCountPerInstance,
+                               U32 InstanceCount,
+                               U32 StartVertexLocation,
+                               U32 StartInstanceLocation) { }
 
     //! Compute command that records a dispatch.
     virtual void Dispatch(U32 GlobalX, U32 GlobalY, U32 GlobalZ) { }

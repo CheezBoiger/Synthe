@@ -167,7 +167,13 @@ void D3D12GraphicsCommandList::SetPipelineState(PipelineStateType PipelineType,
                                                 RootSignature* PRootSignature)
 { 
     ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
-    ID3D12RootSignature* Signature = static_cast<D3D12RootSignature*>(PRootSignature)->GetSignature();
+
+    if (!PRootSignature)
+    {
+        return;
+    }
+
+    ID3D12RootSignature* Signature = static_cast<D3D12RootSignature*>(PRootSignature)->GetNative();
     switch (PipelineType)
     {
         case PipelineStateType_GRAPHICS:
@@ -183,5 +189,34 @@ void D3D12GraphicsCommandList::SetPipelineState(PipelineStateType PipelineType,
             break;
         }
     }
+}
+
+
+void D3D12GraphicsCommandList::DrawIndexedInstanced(U32 IndexCountPerInst,
+                                                    U32 InstanceCount,
+                                                    U32 StartIndexLocation,
+                                                    I32 BaseVertexLocation,
+                                                    U32 StartInstanceLocation)
+{
+    ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
+    CommandList->DrawIndexedInstanced(IndexCountPerInst, InstanceCount, StartIndexLocation, 
+        BaseVertexLocation, StartInstanceLocation);
+}
+
+
+void D3D12GraphicsCommandList::DrawInstanced(U32 VertexCountPerInstance,
+                                             U32 InstanceCount,
+                                             U32 StartVertexLocation,
+                                             U32 StartInstanceLocation)
+{
+    ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
+    CommandList->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
+}
+
+
+void D3D12GraphicsCommandList::Dispatch(U32 X, U32 Y, U32 Z)
+{
+    ID3D12GraphicsCommandList* CommandList = m_CommandLists[m_CurrentRecordingIdx].PCmdList;
+    CommandList->Dispatch(X, Y, Z);
 }
 } // Synthe

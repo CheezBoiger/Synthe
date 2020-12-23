@@ -7,6 +7,7 @@
 #include "D3D12Resource.hpp"
 #include "D3D12MemoryManager.hpp"
 #include "D3D12ResourceView.hpp"
+#include "D3D12GraphicsPipelineState.hpp"
 
 #include "D3D12Fence.hpp"
 
@@ -933,5 +934,40 @@ ResultCode D3D12GraphicsDevice::AllocateDescriptorSets(U32 NumDescriptorSets, De
         POutSets[I] = Set; 
     }
     return SResult_OK;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateGraphicsPipeline(PipelineState** OutPipelineState, const GraphicsPipelineStateCreateInfo& CreateInfo)
+{
+    D3D12PipelineState* PipelineState = Malloc<D3D12PipelineState>();
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC Desc = { };
+
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PVertexShader,    VS);
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PPixelShader,     PS);
+
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PGeometryShader,  GS);
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PDomainShader,    DS);
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PHullShader,      HS);
+
+    Desc.DepthStencilState =    D3D12PipelineState::GenerateDepthStencilDescription(CreateInfo.DepthStencil);
+    Desc.RasterizerState =      D3D12PipelineState::GenerateRasterizerDescription(CreateInfo.Raster);
+    Desc.BlendState =           D3D12PipelineState::GenerateBlendDescription(CreateInfo.BlendState);
+
+    Desc.NumRenderTargets =     CreateInfo.NumRenderTargets;
+    Desc.SampleMask =           CreateInfo.SampleMask;
+    Desc.pRootSignature =       CreateInfo.RootSig ? static_cast<D3D12RootSignature*>(CreateInfo.RootSig)->GetNative() 
+                                                   : nullptr;
+    
+    ResultCode Result = PipelineState->Initialize(m_Device, Desc);
+
+    if (Result != SResult_OK)
+    {
+        delete PipelineState;
+        return Result;
+    }
+    
+    *OutPipelineState = PipelineState;
+
+    return Result;
 }
 } // Synthe

@@ -120,7 +120,8 @@ enum GraphicsDeviceFlags
 enum PipelineStateType
 {
     PipelineStateType_GRAPHICS,
-    PipelineStateType_COMPUTE
+    PipelineStateType_COMPUTE,
+    PipelineStateType_RAYTRACING
 };
 
 

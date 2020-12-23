@@ -41,6 +41,14 @@
 #define BASE_CPU_DESCRIPTOR_ALLOC D3D12_CPU_DESCRIPTOR_HANDLE{ADDRESS_SZ_MAX}
 #define BASE_GPU_DESCRIPTOR_ALLOC D3D12_GPU_DESCRIPTOR_HANDLE{ADDRESS_SZ_MAX}
 
+//! Helper function for shader module translation into native code.
+#define TRANSLATE_SHADER_MODULE(Desc, Native, Shader, NativeShader) { \
+    if (Desc.Shader) { \
+        Native.NativeShader.BytecodeLength = Desc.Shader->SizeInBytes; \
+        Native.NativeShader.pShaderBytecode = Desc.Shader->ByteCode; \
+    } \
+}
+
 //! Get the native DXGI format from the application defined formats. This corresponds to
 //! the native format of the directx runtime module, which DirectX uses; The common format
 //! is mainly for agnostic reasons.
@@ -64,5 +72,6 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format);
 //! \return The D3D12 resource dimension. This is the native resource dimension used by D3D12 runtime.
 D3D12_RESOURCE_DIMENSION GetResourceDimension(Synthe::ResourceDimension Dimension);
 
-//!
+//! Generate a unique gpu handle for the application.
+//! \return Unique identifer handled by the GPU device.
 Synthe::GPUHandle GenerateNewHandle();

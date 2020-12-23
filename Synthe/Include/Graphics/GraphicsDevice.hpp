@@ -266,7 +266,7 @@ public:
     //! \param OutHandle
     //! \param CreateInfo
     //! \return SResult_OK if the call succeeds.
-    virtual ResultCode CreateGraphicsPipeline(GPUHandle* OutHandle, 
+    virtual ResultCode CreateGraphicsPipeline(PipelineState** OutPipelineState, 
                                               const GraphicsPipelineStateCreateInfo& CreateInfo) { return SResult_NOT_IMPLEMENTED; }
 
     //! Create a compute pipeline for use with rendering and other tasks.
@@ -274,7 +274,7 @@ public:
     //! \param OutHandle
     //! \param CreateInfo
     //! \return SResult if the call succeeds.
-    virtual ResultCode CreateComputePipeline(GPUHandle* OutHandle,
+    virtual ResultCode CreateComputePipeline(PipelineState** OutPipelineState,
                                             const ComputePipelineStateCreateInfo& CreateInfo) 
         { return SResult_NOT_IMPLEMENTED; }
 
@@ -284,7 +284,7 @@ public:
     //! \param OutHandle
     //! \param CreateInfo
     //! \return 
-    virtual ResultCode CreateRayTracingPipeline(GPUHandle* OutHandle,
+    virtual ResultCode CreateRayTracingPipeline(PipelineState** OutPipelineState,
                                                 const RayTracingPipelineStateCreateInfo& CreateInfo) 
         { return SResult_NOT_IMPLEMENTED; }
 
