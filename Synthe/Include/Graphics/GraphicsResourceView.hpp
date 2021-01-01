@@ -4,12 +4,10 @@
 #pragma once
 
 #include "Common/Types.hpp"
-
+#include "Graphics/GraphicsStructs.hpp"
 
 namespace Synthe {
 
-
-struct ResourceView {
-
-};
+//! ResourceView is just a gpu handle.
+typedef GPUHandle ResourceView;
 } // Synthe

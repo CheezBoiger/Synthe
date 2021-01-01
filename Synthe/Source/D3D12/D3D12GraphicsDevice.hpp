@@ -130,8 +130,13 @@ public:
                                       DescriptorSet** PDescriptorSets,
                                       DescriptorSetLayoutInfo* PLayouts) override;
 
+    //! Create graphics pipeline.
     ResultCode CreateGraphicsPipeline(PipelineState** OutPipelineState, 
                                       const GraphicsPipelineStateCreateInfo& CreateInfo) override;
+
+    //! Create compute pipeline.
+    ResultCode CreateComputePipeline(PipelineState** OutPipelineState,
+                                     const ComputePipelineStateCreateInfo& CreateInfo) override;
 
 
     //! Begin the frame. This will prepare resources, along with prepare command lists and 

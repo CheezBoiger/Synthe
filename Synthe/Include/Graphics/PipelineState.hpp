@@ -84,9 +84,15 @@ struct GraphicsDepthStencilStateDesc
 };
 
 
+struct PipelineStateCreateInfo
+{
+    RootSignature*                  RootSig;
+};
+
+
 //! Graphics pipeline state create info. Fixed function traditional pipeline.
 //! 
-struct GraphicsPipelineStateCreateInfo
+struct GraphicsPipelineStateCreateInfo : public PipelineStateCreateInfo
 {
     //! Vertex shader module.
     ShaderModule*                   PVertexShader;
@@ -102,8 +108,9 @@ struct GraphicsPipelineStateCreateInfo
     GraphicsRasterStateDesc         Raster;
     //! Depth stencil state.
     GraphicsDepthStencilStateDesc   DepthStencil;
-    GraphicsBlendStateDesc               BlendState;
-    RootSignature*                  RootSig;
+    //! Depth Stencil Format.
+    PixelFormat                     DepthStencilFormat;
+    GraphicsBlendStateDesc          BlendState;
     U32                             NumRenderTargets;
     U32                             SampleMask;
 };
@@ -111,7 +118,7 @@ struct GraphicsPipelineStateCreateInfo
 
 //! Compute pipeline state create info. 
 //!
-struct ComputePipelineStateCreateInfo
+struct ComputePipelineStateCreateInfo : public PipelineStateCreateInfo
 {
     //! Compute shader module.
     ShaderModule* PComputeShader;

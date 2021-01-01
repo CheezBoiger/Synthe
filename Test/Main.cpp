@@ -46,6 +46,9 @@ void MemoryStuff()
         AllocationBlock Block = { };
         PAllocator->Allocate(&Block, sizeof(LinearAllocator) * MEM_BYTES(32), MEM_BYTES(4));
         PAllocs = reinterpret_cast<LinearAllocator*>(Block.StartAddress);
+        // placement new in order to initialize a c style malloc for a class object.
+        new (PAllocs) LinearAllocator();
+        PAllocs->GetTotalSizeBytes();
     }
 
     *A = 512.12345f;
@@ -66,6 +69,17 @@ void MemoryStuff()
     FreeArray(MemoryBlock);
 }
 
+int countBits32(int A)
+{
+    // Count our 32 bits 
+    A = ((A & 0xAAAAAAAAA) >> 1) + (A & 0x55555555);
+    A = ((A & 0xCCCCCCCC) >> 2) + (A & 0x33333333); 
+    A = ((A & 0xF0F0F0F0) >> 4) + (A & 0x0F0F0F0F);
+    A = ((A & 0xFF00FF00) >> 8) + (A & 0x00FF00FF);
+    A = ((A & 0xFFFF0000) >> 16) + (A & 0x0000FFFF);
+    return A;
+}
+
 int main(int c, char* argv[])
 {
     InitializeSystem();
@@ -83,6 +97,13 @@ int main(int c, char* argv[])
     GraphicsDeviceConfiguration.DesiredVendor = GPUVendor_NVIDIA;
     GraphicsDeviceConfiguration.DesiredFlags = GraphicsDeviceFlags_CONSERVATIVE_RASTER_BIT;
     GraphicsDeviceConfiguration.EnableDeviceDebugLayer = true;
+    GraphicsDeviceConfiguration.ScratchPoolMemoryInBytes =      MEM_1KB * MEM_BYTES(1024);
+    GraphicsDeviceConfiguration.BufferPoolMemoryInBytes =       MEM_1GB * MEM_BYTES(1);
+    GraphicsDeviceConfiguration.RenderTargetPoolMemoryInBytes = MEM_1MB * MEM_BYTES(512);
+    GraphicsDeviceConfiguration.UploadPoolMemoryInBytes =       MEM_1KB * MEM_BYTES(512);
+    GraphicsDeviceConfiguration.ReadBackPoolMemoryInBytes =     MEM_1KB * MEM_BYTES(64);
+    GraphicsDeviceConfiguration.TexturePoolMemoryInBytes =      MEM_1MB * MEM_BYTES(512);
+    GraphicsDeviceConfiguration.ShaderResourceMemoryInBytes =   MEM_1MB * MEM_BYTES(256);
     
     SwapchainConfiguration.NumFrames = 3;
     SwapchainConfiguration.Buffering = 3;
@@ -179,7 +200,7 @@ int main(int c, char* argv[])
         RSCreateInfo.LayoutInfos = &Layout;
         PDevice->CreateRootSignature(&PRootSig, RSCreateInfo);
     }
-
+    
     R32 C = 0.f;
     while (!PWindow->GetShouldClose()) 
     {
@@ -193,7 +214,7 @@ int main(int c, char* argv[])
                 ClearColorValue Clear = { sinf((C = C + 0.01f)), cosf(C), 0.0f, 1.0f };
                 TargetBounds Bound = { 0, 0, 1920, 1080 };
                 CmdList->ClearRenderTarget(BackbufferRTV, &Clear, 1, &Bound);
-                CmdList->SetPipelineState(PipelineStateType_GRAPHICS, nullptr, nullptr);
+                CmdList->SetPipelineState(PipelineStateType_GRAPHICS, nullptr, PRootSig);
                 CmdList->DrawInstanced(3, 1, 0, 0);
             CmdList->End();
             PDevice->SubmitCommandLists(1, &CmdSi);

@@ -21,12 +21,19 @@ public:
     //! Generate the native rasterizer description.
     static D3D12_RASTERIZER_DESC GenerateRasterizerDescription(const GraphicsRasterStateDesc& Info);
     
-    //!
+    //! Generate native blend description.
     static D3D12_BLEND_DESC GenerateBlendDescription(const GraphicsBlendStateDesc& Info);
+
+    //! Generate input layout description.
+    static D3D12_INPUT_LAYOUT_DESC GenerateInputLayoutDescription();
 
     //! Initialize the native graphics pipeline state.
     ResultCode Initialize(ID3D12Device* PDevice, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& Desc);
+    //! Initialize the native compute pipeline state.
     ResultCode Initialize(ID3D12Device* PDevice, const D3D12_COMPUTE_PIPELINE_STATE_DESC& Desc);
+
+    //! Return the native pipeline state handled by the driver.
+    ID3D12PipelineState* GetNative() { return m_Pipeline; }
 
 private:
     //! Native pipeline.

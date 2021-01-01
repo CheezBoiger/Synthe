@@ -13,9 +13,10 @@ namespace Synthe {
 //! 
 struct FreeListBlock
 {
-    U64 StartingAddress;
-    U64 SizeInBytes;
-    FreeListBlock* PNext;
+    U64             StartingAddress;
+    U64             SizeInBytes;
+    FreeListBlock*  PNext;
+    B64             ShouldFree;
 };
 
 

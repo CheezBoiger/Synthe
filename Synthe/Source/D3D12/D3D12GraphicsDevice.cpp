@@ -28,7 +28,7 @@ GraphicsDevice* GetDeviceD3D12()
 }
 
 
-void InitializeMemoryHeaps(ID3D12Device* PDevice)
+void InitializeMemoryHeaps(ID3D12Device* PDevice, const GraphicsDeviceConfig& Config)
 {
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_SCENE, D3D12MemoryManager::AllocType_LINEAR);
     D3D12MemoryManager::CreateAndRegisterAllocator(MemoryType_BUFFER, D3D12MemoryManager::AllocType_LINEAR);
@@ -54,39 +54,40 @@ void InitializeMemoryHeaps(ID3D12Device* PDevice)
     HeapDesc.Properties.CreationNodeMask = 0;
     HeapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
     HeapDesc.Properties.VisibleNodeMask = 0;
-    U64 TotalSizeInBytes = MEM_1KB * MEM_BYTES(1024);
+    U64 TotalSizeInBytes = Config.ScratchPoolMemoryInBytes;
     HeapDesc.SizeInBytes = TotalSizeInBytes; 
 
     D3D12MemoryManager::GetAllocator(MemoryType_SCRATCH)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_SCRATCH)->Create(PDevice, 
         D3D12MemoryManager::GetAllocator(MemoryType_SCRATCH), HeapDesc);
 
-    HeapDesc.SizeInBytes = MEM_1GB * MEM_BYTES(1);
+    HeapDesc.SizeInBytes = Config.BufferPoolMemoryInBytes;
     D3D12MemoryManager::GetAllocator(MemoryType_BUFFER)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_BUFFER)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_BUFFER), HeapDesc);
 
     HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-    HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(512);
+    HeapDesc.SizeInBytes = Config.RenderTargetPoolMemoryInBytes;
     D3D12MemoryManager::GetAllocator(MemoryType_RENDER_TARGETS_AND_DEPTH)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_RENDER_TARGETS_AND_DEPTH)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_RENDER_TARGETS_AND_DEPTH), HeapDesc);
 
     HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-    HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(64);
+    HeapDesc.SizeInBytes = Config.UploadPoolMemoryInBytes;
     HeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
     D3D12MemoryManager::GetAllocator(MemoryType_UPLOAD)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_UPLOAD)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_UPLOAD), HeapDesc);
     
     HeapDesc.Properties.Type = D3D12_HEAP_TYPE_READBACK;
+    HeapDesc.SizeInBytes = Config.ReadBackPoolMemoryInBytes;
     D3D12MemoryManager::GetAllocator(MemoryType_READBACK)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_READBACK)->Create(PDevice,
         D3D12MemoryManager::GetAllocator(MemoryType_READBACK), HeapDesc);
 
     HeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
     HeapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
-    HeapDesc.SizeInBytes = MEM_1MB * MEM_BYTES(512);
+    HeapDesc.SizeInBytes = Config.ShaderResourceMemoryInBytes;
     HeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     D3D12MemoryManager::GetAllocator(MemoryType_TEXTURE)->Initialize(0ULL, HeapDesc.SizeInBytes);
     D3D12MemoryManager::GetMemoryPool(MemoryType_TEXTURE)->Create(PDevice,
@@ -310,7 +311,7 @@ ResultCode D3D12GraphicsDevice::Initialize(const GraphicsDeviceConfig& DeviceCon
     m_Features.DedicatedVideoMemoryInBytes = BestInfo.DedicatedVideoMemoryBytes;
     m_ResourceHeapTier = BestInfo.FeatureSupport.ResourceHeapTier;
 
-    InitializeMemoryHeaps(m_Device);
+    InitializeMemoryHeaps(m_Device, DeviceConfig);
     InitializeDescriptorHeaps(m_Device, SwapchainConfig.Buffering);    
     CreateGraphicsQueue();
     CreateAsyncQueue();
@@ -342,12 +343,12 @@ ResultCode D3D12GraphicsDevice::CleanUp()
 {
     m_Swapchain.CleanUp();
     CleanUpFences();
-    if (m_GraphicsQueue) m_GraphicsQueue->Release();
-    if (m_AsyncQueue) m_AsyncQueue->Release();
-    if (m_CopyQueue) m_CopyQueue->Release();
-    if (m_PFactory) m_PFactory->Release();
-    if (m_Device) m_Device->Release();
-    if (m_MLDevice) m_MLDevice->Release();
+    if (m_GraphicsQueue)    m_GraphicsQueue->Release();
+    if (m_AsyncQueue)       m_AsyncQueue->Release();
+    if (m_CopyQueue)        m_CopyQueue->Release();
+    if (m_PFactory)         m_PFactory->Release();
+    if (m_Device)           m_Device->Release();
+    if (m_MLDevice)         m_MLDevice->Release();
     return SResult_OK;
 }
 
@@ -952,11 +953,13 @@ ResultCode D3D12GraphicsDevice::CreateGraphicsPipeline(PipelineState** OutPipeli
     Desc.DepthStencilState =    D3D12PipelineState::GenerateDepthStencilDescription(CreateInfo.DepthStencil);
     Desc.RasterizerState =      D3D12PipelineState::GenerateRasterizerDescription(CreateInfo.Raster);
     Desc.BlendState =           D3D12PipelineState::GenerateBlendDescription(CreateInfo.BlendState);
+    Desc.InputLayout =          D3D12PipelineState::GenerateInputLayoutDescription();
 
     Desc.NumRenderTargets =     CreateInfo.NumRenderTargets;
     Desc.SampleMask =           CreateInfo.SampleMask;
     Desc.pRootSignature =       CreateInfo.RootSig ? static_cast<D3D12RootSignature*>(CreateInfo.RootSig)->GetNative() 
                                                    : nullptr;
+    Desc.DSVFormat =            GetCommonFormatToDXGIFormat(CreateInfo.DepthStencilFormat);
     
     ResultCode Result = PipelineState->Initialize(m_Device, Desc);
 
@@ -968,6 +971,29 @@ ResultCode D3D12GraphicsDevice::CreateGraphicsPipeline(PipelineState** OutPipeli
     
     *OutPipelineState = PipelineState;
 
+    return Result;
+}
+
+
+ResultCode D3D12GraphicsDevice::CreateComputePipeline(PipelineState** OutPipelineState,
+                                                      const ComputePipelineStateCreateInfo& CreateInfo)
+{
+    D3D12PipelineState* PipelineState = Malloc<D3D12PipelineState>();
+    D3D12_COMPUTE_PIPELINE_STATE_DESC Desc = { };
+    Desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+    Desc.NodeMask = 0;
+    Desc.pRootSignature = CreateInfo.RootSig ? static_cast<D3D12RootSignature*>(CreateInfo.RootSig)->GetNative() 
+                                             : nullptr;
+    TRANSLATE_SHADER_MODULE(CreateInfo, Desc, PComputeShader, CS);
+    ResultCode Result = PipelineState->Initialize(m_Device, Desc);
+
+    if (Result != SResult_OK)
+    {
+        delete PipelineState;
+        return Result;
+    }
+
+    *OutPipelineState = PipelineState;
     return Result;
 }
 } // Synthe

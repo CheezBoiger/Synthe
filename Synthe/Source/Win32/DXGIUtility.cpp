@@ -14,7 +14,7 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
         case DXGI_FORMAT_R32G32B32A32_SINT:
         case DXGI_FORMAT_R32G32B32A32_TYPELESS:
         case DXGI_FORMAT_R32G32B32A32_UINT:
-            return 128;
+            return 128u;
         // 64 bits
         case DXGI_FORMAT_R16G16B16A16_FLOAT:
         case DXGI_FORMAT_R16G16B16A16_SINT:
@@ -24,7 +24,7 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
         case DXGI_FORMAT_R16G16B16A16_UNORM:
         
         case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-            return 64;
+            return 64u;
 
         // 32 bits.
         case DXGI_FORMAT_R11G11B10_FLOAT:
@@ -65,10 +65,10 @@ UINT GetBitsForPixelFormat(DXGI_FORMAT Format)
         case DXGI_FORMAT_R8G8B8A8_UINT:
         case DXGI_FORMAT_R8G8B8A8_UNORM:
         case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-            return 32;
+            return 32u;
         // Unknown, we assume it is raw buffer, no formatting.
         default:
-            return 1;
+            return 1u;
     }
 }
 
@@ -76,9 +76,16 @@ DXGI_FORMAT GetCommonFormatToDXGIFormat(Synthe::PixelFormat Format)
 {
     switch (Format)
     {
-        case Synthe::GFormat_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
-        case Synthe::GFormat_R16G16B16A16_FLOAT: return DXGI_FORMAT_R16G16B16A16_FLOAT;
-        default: return DXGI_FORMAT_UNKNOWN;
+        case Synthe::GFormat_R8G8B8A8_UNORM:                return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case Synthe::GFormat_R16G16B16A16_FLOAT:            return DXGI_FORMAT_R16G16B16A16_FLOAT;
+        case Synthe::GFormat_D24_UNORM_S8_UINT:             return DXGI_FORMAT_D24_UNORM_S8_UINT;
+        case Synthe::GFormat_D32_FLOAT:                     return DXGI_FORMAT_D32_FLOAT;
+        case Synthe::GFormat_R16G16_FLOAT:                  return DXGI_FORMAT_R16G16_FLOAT;
+        case Synthe::GFormat_R10G10B10A2_UNORM:             return DXGI_FORMAT_R10G10B10A2_UNORM;
+        case Synthe::GFormat_R11G11B10_FLOAT:               return DXGI_FORMAT_R11G11B10_FLOAT;        
+
+        case Synthe::GFormat_UNKNOWN:
+        default:                                            return DXGI_FORMAT_UNKNOWN;
     }
 }
 

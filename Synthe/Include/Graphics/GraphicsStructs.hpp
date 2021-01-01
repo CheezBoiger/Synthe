@@ -25,17 +25,17 @@ enum GPUVendor
     //! Unknown vendor.
     GPUVendor_UNKNOWN,
     //! Vendor NVidia.
-    GPUVendor_NVIDIA = ( 1 << 0 ),
+    GPUVendor_NVIDIA =      ( 1 << 0 ),
     //! Vendor Intel.
-    GPUVendor_INTEL = ( 1 << 1 ),
+    GPUVendor_INTEL =       ( 1 << 1 ),
     //! Vendor Advanced Micro Devices.
-    GPUVendor_AMD = ( 1 << 2 ),
+    GPUVendor_AMD =         ( 1 << 2 ),
     //! Vendor Qualcomm.
-    GPUVendor_QUALCOMM = ( 1 << 3 ),
+    GPUVendor_QUALCOMM =    ( 1 << 3 ),
     //! Vendor Microsoft.
-    GPUVendor_MICROSOFT = ( 1 << 4 ),
+    GPUVendor_MICROSOFT =   ( 1 << 4 ),
     //! Any vendor.
-    GPUVendor_ANY = 0xFFFFFFFF
+    GPUVendor_ANY =         ( 0xFFFFFFFF )
 };
 
 
@@ -99,21 +99,26 @@ enum GFormat
     GFormat_UNKNOWN,
     GFormat_R8G8B8A8_UNORM,
     GFormat_R16G16B16A16_FLOAT,
-    GFormat_R16G16_FLOAT
+    GFormat_R16G16_FLOAT,
+    GFormat_R32_FLOAT,
+    GFormat_D32_FLOAT,
+    GFormat_D24_UNORM_S8_UINT,
+    GFormat_R10G10B10A2_UNORM,
+    GFormat_R11G11B10_FLOAT
 };
 
 typedef U32 PixelFormat;
 
 enum GraphicsDeviceFlags
 {
-    GraphcisDeviceFlags_NONE = 0,
-    GraphicsDeviceFlags_SOFTWARE_RASTERIZER_BIT = ( 1 << 0 ),
-    GraphicsDeviceFlags_RAYTRACING_HARDWARE_BIT = ( 1 << 1 ),
-    GraphicsDeviceFlags_MACHINE_LEARNING_HARWARE_BIT = ( 1 << 2 ),
-    GraphicsDeviceFlags_VARIABLE_RATE_SHADING_BIT = ( 1 << 3 ),
-    GraphicsDeviceFlags_CONSERVATIVE_RASTER_BIT = ( 1 << 4 ),
-    GraphicsDeviceFlags_TILED_RESOURCES_BIT = ( 1 << 5 ),
-    GraphicsDeviceFlags_BARYCENTRIC_COORDINATES_BIT = ( 1 << 6 )
+    GraphcisDeviceFlags_NONE =                          ( 0 ),
+    GraphicsDeviceFlags_SOFTWARE_RASTERIZER_BIT =       ( 1 << 0 ),
+    GraphicsDeviceFlags_RAYTRACING_HARDWARE_BIT =       ( 1 << 1 ),
+    GraphicsDeviceFlags_MACHINE_LEARNING_HARWARE_BIT =  ( 1 << 2 ),
+    GraphicsDeviceFlags_VARIABLE_RATE_SHADING_BIT =     ( 1 << 3 ),
+    GraphicsDeviceFlags_CONSERVATIVE_RASTER_BIT =       ( 1 << 4 ),
+    GraphicsDeviceFlags_TILED_RESOURCES_BIT =           ( 1 << 5 ),
+    GraphicsDeviceFlags_BARYCENTRIC_COORDINATES_BIT =   ( 1 << 6 )
 };
 
 
@@ -134,9 +139,26 @@ struct GraphicsDeviceConfig
     //! Desired Flags.
     GraphicsDeviceFlags DesiredFlags;
     //! True if the specified desires are required.
-    B32 DesiresRequired : 1;
+    B64 DesiresRequired : 1;
     //! Enable GPU validation for debugging.
-    B32 EnableDeviceDebugLayer : 1;
+    B64 EnableDeviceDebugLayer : 1;
+    //! Maximum device memory in bytes, for texture Pool.
+    U64 TexturePoolMemoryInBytes;
+    //! Maximum device memory in bytes, for buffer pool.
+    U64 BufferPoolMemoryInBytes;
+    //! Maximum memory in bytes, for upload pool. This is memory pool used for 
+    //! uploading to device local memory.
+    U64 UploadPoolMemoryInBytes;
+    //! Maximum memory in bytes, for readback. This should be small/none if gpu read back is not necessary.
+    U64 ReadBackPoolMemoryInBytes;
+    //! Maximum memory in bytes, for device render surfaces. This includes render targets,
+    //! and depth stecil targets.
+    U64 RenderTargetPoolMemoryInBytes;
+    //! Maximum memory in bytes, for scratch pool.
+    U64 ScratchPoolMemoryInBytes;
+    //! Maximum memory in bytes, for shader resource surfaces.
+    U64 ShaderResourceMemoryInBytes;
+    
 };
 
 
@@ -163,12 +185,12 @@ struct InstancedKey
 
 typedef enum ResourceUsage
 {
-    ResourceUsage_VERTEX_BUFFER         = (1 << 0),
-    ResourceUsage_INDEX_BUFFER          = (1 << 1),
-    ResourceUsage_UNORDERED_ACCESS      = (1 << 2),
-    ResourceUsage_SHADER_RESOURCE       = (1 << 3),
-    ResourceUsage_DEPTH_STENCIL         = (1 << 4),
-    ResourceUsage_RENDER_TARGET         = (1 << 5)
+    ResourceUsage_VERTEX_BUFFER         = ( 1 << 0 ),
+    ResourceUsage_INDEX_BUFFER          = ( 1 << 1 ),
+    ResourceUsage_UNORDERED_ACCESS      = ( 1 << 2 ),
+    ResourceUsage_SHADER_RESOURCE       = ( 1 << 3 ),
+    ResourceUsage_DEPTH_STENCIL         = ( 1 << 4 ),
+    ResourceUsage_RENDER_TARGET         = ( 1 << 5 )
 } ResourceUsage;
 
 typedef U32 ResourceUsageFlags;
@@ -509,12 +531,12 @@ struct Scissor
 
 enum ShaderVisibility
 {
-    ShaderVisibility_VERTEX = (1 << 0),
-    ShaderVisibility_PIXEL = (1 << 1),
-    ShaderVisibility_DOMAIN = (1 << 2),
-    ShaderVisibility_HULL = (1 << 3),
-    ShaderVisibility_GEOMETRY = (1 << 4),
-    ShaderVisibility_ALL = 0xffffffff
+    ShaderVisibility_VERTEX =           ( 1 << 0 ),
+    ShaderVisibility_PIXEL =            ( 1 << 1 ),
+    ShaderVisibility_DOMAIN =           ( 1 << 2 ),
+    ShaderVisibility_HULL =             ( 1 << 3 ),
+    ShaderVisibility_GEOMETRY =         ( 1 << 4 ),
+    ShaderVisibility_ALL =              ( 0xFFFFFFFF )
 };
 
 
